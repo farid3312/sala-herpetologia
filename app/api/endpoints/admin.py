@@ -37,8 +37,13 @@ async def procesar_login(
         # Si falla, recargamos la página pasándole la variable "error"
         return templates.TemplateResponse("login.html", {"request": request, "error": "Correo o contraseña incorrectos"})
 
-    # 3. Si todo es correcto, lo redirigimos al panel de importación
-    return RedirectResponse(url="/admin/importar", status_code=status.HTTP_302_FOUND)
+    # 3. Si todo es correcto, lo redirigimos al panel principal de admin
+    return RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_302_FOUND)
+
+@router.get("/dashboard", response_class=HTMLResponse, summary="Panel principal de Administrador")
+async def admin_dashboard(request: Request):
+    """Renderiza el menú principal del administrador"""
+    return templates.TemplateResponse("admin.html", {"request": request})
 
 
 # ==========================================

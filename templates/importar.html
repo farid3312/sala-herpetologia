@@ -1,25 +1,42 @@
-{% extends "base.html" %} {% block content %}
-<div class="row justify-content-center">
+{% extends "base.html" %} 
+
+{% block content %}
+<style>
+    body {
+        /* Cambia 'fondo.png' por el nombre real de tu imagen en la carpeta static */
+        background-image: url("{{ url_for('static', path='fondoimportar.png') }}");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+    /* Hacemos la tarjeta un poco transparente para que se vea el fondo */
+    .card.shadow {
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(5px);
+    }
+</style>
+
+<div class="row justify-content-center mt-5">
   <div class="col-md-6">
-    <div class="card shadow">
-      <div class="card-header bg-primary text-white">
+    <div class="card shadow border-0 rounded-lg">
+      <div class="card-header bg-primary text-white text-center">
         <h5 class="mb-0">Importación Masiva de Catálogo (CSV)</h5>
       </div>
-      <div class="card-body">
-        <p class="text-muted small">
+      <div class="card-body p-4">
+        <p class="text-muted small text-center mb-4">
           Selecciona el archivo corregido con el formato oficial.
         </p>
         <form id="uploadForm">
-          <div class="mb-3">
+          <div class="mb-4">
             <input
-              class="form-control"
+              class="form-control form-control-lg"
               type="file"
               id="csvFile"
               accept=".csv"
               required
             />
           </div>
-          <button type="submit" class="btn btn-success w-100" id="btnImportar">
+          <button type="submit" class="btn btn-success btn-lg w-100 fw-bold" id="btnImportar">
             Iniciar Carga en PostgreSQL
           </button>
         </form>
@@ -39,10 +56,9 @@
     const formData = new FormData();
     formData.append("file", fileInput.files[0]);
 
-    // CORRECCIÓN: true en minúscula para JavaScript
     btn.disabled = true;
     status.innerHTML =
-      '<div class="alert alert-info">Procesando archivo...</div>';
+      '<div class="alert alert-info fw-bold">⏳ Procesando archivo...</div>';
 
     try {
       const response = await fetch("/admin/datos/importar-csv/", {
@@ -52,19 +68,17 @@
       const result = await response.json();
 
       if (response.ok) {
-        // Nota: validamos que 'detalles' exista para evitar errores visuales
         const nuevos = result.detalles ? result.detalles.registros_nuevos : 0;
-        status.innerHTML = `<div class="alert alert-success">
-                <strong>¡Éxito!</strong> ${result.mensaje}<br>
+        status.innerHTML = `<div class="alert alert-success shadow-sm">
+                <strong>✅ ¡Éxito!</strong> ${result.mensaje}<br>
                 Registros procesados: ${nuevos}
             </div>`;
       } else {
         throw new Error(result.detail || "Error en el servidor");
       }
     } catch (error) {
-      status.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+      status.innerHTML = `<div class="alert alert-danger shadow-sm"><strong>❌ Error:</strong> ${error.message}</div>`;
     } finally {
-      // CORRECCIÓN: false en minúscula para JavaScript
       btn.disabled = false;
     }
   };
