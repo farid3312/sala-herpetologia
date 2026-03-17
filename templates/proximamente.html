@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Próximamente - {{ sala }}</title>
+    <link rel="icon" href="{{ url_for('static', path='favicon.ico') }}" type="image/x-icon">
+    <style>
+        /* CSS Mejorado para que los fondos NUNCA se deformen */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-image: url("{{ url_for('static', path='fondo.png') }}");
+            background-size: cover;
+            background-position: center center; /* Fuerza el centro exacto de la imagen */
+            background-repeat: no-repeat; /* Evita que la imagen se duplique como mosaico */
+            background-attachment: fixed;
+            background-color: #1a3644;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh; /* Ocupa el 100% de la pantalla */
+        }
+
+        .mensaje-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 50px 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            max-width: 500px;
+            width: 90%;
+            border-top: 5px solid #2c5364;
+        }
+
+        .icono-construccion {
+            font-size: 4rem;
+            margin-bottom: 10px;
+        }
+
+        h1 { color: #2c5364; margin-bottom: 15px; }
+        
+        p { color: #555; font-size: 1.1rem; line-height: 1.5; margin-bottom: 30px; }
+
+        .btn-home {
+            display: inline-block;
+            padding: 12px 25px;
+            background-color: #2c5364;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .btn-home:hover {
+            background-color: #1d3a47;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="mensaje-card">
+        <div class="icono-construccion">🚧</div>
+        <h1>Sala de {{ sala }}</h1>
+        <p>Estamos preparando esta exhibición para ti. Nuestros curadores están organizando los especímenes. ¡Vuelve pronto para descubrir datos fascinantes!</p>
+        <a href="{{ url_for('inicio') }}" class="btn-home">🏠 Volver al Menú Principal</a>
+    </div>
+
+</body>
+</html>

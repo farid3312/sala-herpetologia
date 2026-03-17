@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ especie.nombre_comun }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            background-image: url("{{ url_for('static', path='fondo detalle.png') }}");
+            background-repeat: repeat; 
+            
+            /* AQUÍ ESTÁ EL CAMBIO: Mismo tamaño pequeño para el mosaico */
+            background-size: 450px; 
+            
+            background-attachment: fixed;
+        }
+
+        /* Botón Inicio esquina superior izquierda */
+        .btn-home {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: #2c5364;
+            color: white;
+            padding: 10px 15px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 80px auto 20px auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        img { width: 100%; border-radius: 10px; }
+        
+        /* Diseño responsivo: en pantallas pequeñas el texto se ajusta */
+        @media (max-width: 600px) {
+            .container { width: 90%; margin-top: 100px; }
+        }
+    </style>
+</head>
+<body>
+    <a href="{{ url_for('inicio') }}" class="btn-home">🏠 Inicio</a>
+
+    <div class="container">
+        <h1>{{ especie.nombre_comun }}</h1>
+        <img src="{{ especie.imagen_url }}" alt="{{ especie.nombre_comun }}">
+        <p><strong>Científico:</strong> {{ especie.nombre_cientifico }}</p>
+        <p><strong>Hábitat:</strong> {{ especie.habitat }}</p>
+    </div>
+</body>
+</html>

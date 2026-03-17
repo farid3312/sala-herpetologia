@@ -1,0 +1,24 @@
+# Entornos virtuales (¡Crítico!)
+venv/
+env/
+.venv/
+
+# Variables de entorno y secretos (¡Crítico para seguridad!)
+.env
+
+# Archivos compilados y caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Base de datos locales (si usáramos SQLite en el futuro)
+*.sqlite3
+*.db
+
+# Archivos del sistema operativo (ruido visual)
+Thumbs.db
+.DS_Store
+
+# Archivos temporales de subida
+data/temp_*.csv
