@@ -1,0 +1,72 @@
+{% extends "base.html" %} {% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Importación Masiva de Catálogo (CSV)</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-muted small">
+          Selecciona el archivo corregido con el formato oficial.
+        </p>
+        <form id="uploadForm">
+          <div class="mb-3">
+            <input
+              class="form-control"
+              type="file"
+              id="csvFile"
+              accept=".csv"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-success w-100" id="btnImportar">
+            Iniciar Carga en PostgreSQL
+          </button>
+        </form>
+        <div id="statusMessage" class="mt-3"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById("uploadForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById("csvFile");
+    const btn = document.getElementById("btnImportar");
+    const status = document.getElementById("statusMessage");
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    // CORRECCIÓN: true en minúscula para JavaScript
+    btn.disabled = true;
+    status.innerHTML =
+      '<div class="alert alert-info">Procesando archivo...</div>';
+
+    try {
+      const response = await fetch("/admin/datos/importar-csv/", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+
+      if (response.ok) {
+        // Nota: validamos que 'detalles' exista para evitar errores visuales
+        const nuevos = result.detalles ? result.detalles.registros_nuevos : 0;
+        status.innerHTML = `<div class="alert alert-success">
+                <strong>¡Éxito!</strong> ${result.mensaje}<br>
+                Registros procesados: ${nuevos}
+            </div>`;
+      } else {
+        throw new Error(result.detail || "Error en el servidor");
+      }
+    } catch (error) {
+      status.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+    } finally {
+      // CORRECCIÓN: false en minúscula para JavaScript
+      btn.disabled = false;
+    }
+  };
+</script>
+{% endblock %}
