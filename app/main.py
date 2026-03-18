@@ -6,6 +6,8 @@ from fastapi.templating import Jinja2Templates
 from app.api.api_router import api_router
 from app.database import engine, Base
 
+
+
 # 1. Creación de tablas en PostgreSQL
 # Esto asegura que al arrancar, las tablas existan antes de cualquier petición
 Base.metadata.create_all(bind=engine)
@@ -15,6 +17,7 @@ app = FastAPI(
     title="Sistema Museo Herpetología",
     version="1.0.0"
 )
+app.mount("/data", StaticFiles(directory="data"), name="data")
 
 # 3. Configuración de Archivos Estáticos y Plantillas
 # Debe ir después de inicializar 'app'
