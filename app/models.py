@@ -3,6 +3,7 @@ from sqlalchemy import Column, Integer, String, Boolean, Text, Date, Numeric, TI
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey, UniqueConstraint
 
 # Importamos la Base que acabamos de crear en database.py
 from app.database import Base
@@ -37,9 +38,12 @@ class Especie(Base):
     url_imagen = Column(Text)
     url_audio = Column(Text)
 
+
     # Relación bidireccional con los ejemplares físicos
     ejemplares = relationship("EjemplarMuseo", back_populates="especie_info")
-
+    __table_args__ = (
+        UniqueConstraint('genero', 'especie', name='uq_genero_especie_taxonomia'),
+    )
 class EjemplarMuseo(Base):
     """
     Almacena el inventario físico (las piezas reales en Popayán).

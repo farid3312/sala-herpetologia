@@ -1,0 +1,16 @@
+# Entornos virtuales
+venv/
+env/
+
+# Variables de entorno (¡Crítico para seguridad!)
+.env
+
+# Archivos temporales de Python
+__pycache__/
+*.pyc
+
+# Archivos de la base de datos local (si aplicara)
+*.sqlite3
+
+# Carpeta de datos temporales
+data/temp_*.csv

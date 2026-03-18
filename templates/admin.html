@@ -1,172 +1,912 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Panel de Control - Museo Herpetológico</title>
-    <link rel="icon" href="{{ url_for('static', path='favicon.ico') }}" type="image/x-icon">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
     <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-image: url("{{ url_for('static', path='fondo admin.png') }}");
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            min-height: 100vh;
-        }
-
-        .admin-container {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            max-width: 1100px;
-            margin: 20px auto;
-            backdrop-filter: blur(10px);
-        }
-
-        h1 { color: #2c5364; font-weight: bold; }
-        
-        .status-tag {
-            display: inline-block;
-            background-color: #e8f5e9;
-            color: #2e7d32;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: bold;
-            margin-bottom: 15px;
-        }
-
-        .header-flex {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 15px;
-        }
-
-        .menu-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-
-        .action-card {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            text-decoration: none;
-            color: #333;
-            border: 1px solid #ddd;
-            transition: 0.3s;
-            text-align: center;
-        }
-
-        .action-card:hover {
-            background: #2c5364;
-            color: white;
-            transform: translateY(-3px);
-        }
-
-        /* Estilos de la Tabla */
-        .table-container {
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            border: 1px solid #eee;
-        }
-
-        .table thead {
-            background-color: #2c5364;
-            color: white;
-        }
-
-        .btn-logout {
-            color: #c62828;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 14px;
-            padding: 8px 16px;
-            border: 1px solid #c62828;
-            border-radius: 5px;
-            transition: 0.3s;
-        }
-
-        .btn-logout:hover {
-            background-color: #c62828;
-            color: white;
-        }
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: "Segoe UI", sans-serif;
+        background-image: url("{{ url_for('static', path='fondo admin.png') }}");
+        background-size: cover;
+        background-attachment: fixed;
+        min-height: 100vh;
+      }
+      .admin-container {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 30px;
+        border-radius: 15px;
+        max-width: 1200px;
+        margin: 20px auto;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(10px);
+      }
+      .header-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+      }
+      .menu-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 30px;
+      }
+      .action-card {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        text-decoration: none;
+        color: #333;
+        border: 1px solid #ddd;
+        text-align: center;
+        transition: 0.3s;
+      }
+      .action-card:hover {
+        background: #2c5364;
+        color: white;
+      }
+      .table-container {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid #eee;
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <div class="admin-container">
-        <div class="header-flex">
-            <div>
-                <div class="status-tag">Sesión Iniciada: Administrador</div>
-                <h1>Panel de Gestión</h1>
-            </div>
-            <a href="/admin/login" class="btn-logout">Cerrar sesión</a>
-        </div>
+      <div class="header-flex">
+        <h1>Panel de Gestión</h1>
+        <a href="/admin/login" class="btn btn-outline-danger">Cerrar sesión</a>
+      </div>
 
-        <div class="menu-actions">
-            <a href="/admin/importar" class="action-card">
-                <strong>📦 Importar Datos</strong>
-                <p class="mb-0 small">Cargar CSV masivo</p>
-            </a>
-            <a href="#" class="action-card">
-                <strong>🦎 Nueva Especie</strong>
-                <p class="mb-0 small">Registro manual individual</p>
-            </a>
+      <div class="menu-actions">
+        <a href="/admin/importar" class="action-card"
+          ><strong>📦 Importar Datos</strong>
+          <p class="mb-0 small">Cargar CSV masivo</p></a
+        >
+        <a
+          href="#"
+          class="action-card"
+          data-bs-toggle="modal"
+          data-bs-target="#modalNuevaEspecie"
+          ><strong>🦎 Nueva Especie</strong>
+          <p class="mb-0 small">Registro manual completo</p></a
+        >
+      </div>
+      <div class="row mb-3 mt-4">
+        <div class="col-md-6">
+          <div class="input-group shadow-sm">
+            <span class="input-group-text bg-white border-end-0"> 🔍 </span>
+            <input
+              type="text"
+              id="buscadorEspecies"
+              class="form-control border-start-0"
+              placeholder="Buscar por ID, nombre científico o común..."
+            />
+          </div>
         </div>
+        <div class="col-md-6 text-end">
+          <small class="text-muted" id="contadorResultados">
+            Mostrando todos los registros
+          </small>
+        </div>
+      </div>
 
-        <h4 class="mb-3" style="color: #2c5364;">Inventario Actual de Especies</h4>
-        <div class="table-container shadow-sm">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Grupo</th>
-                        <th>Género y Especie</th>
-                        <th>Nombre Común</th>
-                        <th>Familia</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for especie in especies %}
-                    <tr>
-                        <td>{{ especie.id }}</td>
-                        <td>
-                            <span class="badge {{ 'bg-success' if especie.grupo == 'Anfibio' else 'bg-warning text-dark' }}">
-                                {{ especie.grupo }}
-                            </span>
-                        </td>
-                        <td><em>{{ especie.genero }} {{ especie.especie }}</em></td>
-                        <td>{{ especie.nombre_comun }}</td>
-                        <td>{{ especie.familia }}</td>
-                        <td>
-                            <button class="btn btn-sm btn-outline-primary">Editar</button>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">
-                            No hay especies registradas. Usa el botón de "Importar Datos".
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+      <div class="table-container shadow-sm">
+        <table class="table table-hover mb-0">
+          <thead class="table-dark">
+            <tr>
+              <th>ID</th>
+              <th>Grupo</th>
+              <th>Nombre Científico</th>
+              <th>Nombre Común</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for especie in especies %}
+            <tr>
+              <td>{{ especie.id }}</td>
+              <td>
+                <span
+                  class="badge {{ 'bg-success' if especie.grupo == 'Anfibio' else 'bg-warning text-dark' }}"
+                  >{{ especie.grupo }}</span
+                >
+              </td>
+              <td><em>{{ especie.genero }} {{ especie.especie }}</em></td>
+              <td>{{ especie.nombre_comun }}</td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  onclick="verFichaTecnica({{ especie.id }})"
+                >
+                  📄 Ficha
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-info ms-1"
+                  onclick="abrirGestorEjemplares({{ especie.id }})"
+                >
+                  📦 Inventario
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-primary ms-1"
+                  onclick="abrirEditarEspecie({{ especie.id }})"
+                >
+                  Editar
+                </button>
+                <button
+                  class="btn btn-sm btn-outline-danger ms-1"
+                  onclick="eliminarEspecie({{ especie.id }})"
+                >
+                  Borrar
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     </div>
 
-</body>
+    <div
+      class="modal fade"
+      id="modalFichaTecnica"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-dark text-white">
+            <h5>📄 Ficha Técnica Científica</h5>
+            <button
+              type="button"
+              class="btn-close btn-close-white"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body" id="contenidoFicha"></div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      id="modalEjemplares"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-info text-white">
+            <h5>📦 Inventario de Ejemplares</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="d-flex justify-content-end mb-3">
+              <button
+                class="btn btn-success btn-sm"
+                onclick="abrirNuevoEjemplar()"
+              >
+                + Nuevo ejemplar
+              </button>
+            </div>
+            <table class="table table-sm table-bordered">
+              <thead>
+                <tr>
+                  <th>N° Colección</th>
+                  <th>Tipo</th>
+                  <th>Exhibición</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tablaEjemplaresBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      id="modalNuevaEspecie"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-success text-white">
+            <h5>🦎 Registro Taxonómico Completo</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <form id="formNuevaEspecie">
+            <div class="modal-body">
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Grupo</label
+                  ><select class="form-select" name="grupo">
+                    <option value="Anfibio">Anfibio</option>
+                    <option value="Reptil">Reptil</option>
+                  </select>
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label">Nombre Común</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    name="nombre_comun"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Género</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    name="genero"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Especie</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    name="especie"
+                    required
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Familia</label
+                  ><input type="text" class="form-control" name="familia" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Orden</label
+                  ><input type="text" class="form-control" name="orden" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Toxicidad</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    name="nivel_toxicidad"
+                    placeholder="Ej: Alta/Nula"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Hábitat</label
+                  ><input type="text" class="form-control" name="habitat" />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Dieta</label
+                  ><input type="text" class="form-control" name="dieta" />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">URL Imagen</label
+                  ><input type="url" class="form-control" name="url_imagen" />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">URL Audio</label
+                  ><input type="url" class="form-control" name="url_audio" />
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Curiosidades</label
+                  ><textarea
+                    class="form-control"
+                    name="curiosidades"
+                    rows="2"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-success">
+                Guardar Especie
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      id="modalEditarEspecie"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5>✏️ Editar Ficha Técnica</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <form id="formEditarEspecie">
+            <input type="hidden" id="edit_especie_id" />
+            <div class="modal-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Nombre Común</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    id="edit_nombre_comun"
+                    name="nombre_comun"
+                  />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Familia</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    id="edit_familia"
+                    name="familia"
+                  />
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Orden</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    id="edit_orden"
+                    name="orden"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Hábitat</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    id="edit_habitat"
+                    name="habitat"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Dieta</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    id="edit_dieta"
+                    name="dieta"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Toxicidad</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    id="edit_toxicidad"
+                    name="nivel_toxicidad"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">URL Imagen</label
+                  ><input
+                    type="url"
+                    class="form-control"
+                    id="edit_url_imagen"
+                    name="url_imagen"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">URL Audio</label
+                  ><input
+                    type="url"
+                    class="form-control"
+                    id="edit_url_audio"
+                    name="url_audio"
+                  />
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Curiosidades</label
+                  ><textarea
+                    class="form-control"
+                    id="edit_curiosidades"
+                    name="curiosidades"
+                    rows="2"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary">
+                Actualizar Cambios
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      id="modalNuevoEjemplar"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-dark text-white">
+            <h5>🧪 Registrar Espécimen Físico</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <form id="formNuevoEjemplar">
+            <div class="modal-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">N° Colección</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    name="numero_coleccion"
+                    required
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Tipo Colección</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    name="tipo_coleccion"
+                    placeholder="Ej: Alcohol"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Departamento</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    name="departamento"
+                  />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Municipio</label
+                  ><input type="text" class="form-control" name="municipio" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Fecha Determ.</label
+                  ><input
+                    type="date"
+                    class="form-control"
+                    name="fecha_determinacion"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Latitud</label
+                  ><input
+                    type="number"
+                    step="any"
+                    class="form-control"
+                    name="latitud_decimal"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Longitud</label
+                  ><input
+                    type="number"
+                    step="any"
+                    class="form-control"
+                    name="longitud_decimal"
+                  />
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Morfometría (JSON)</label
+                  ><textarea
+                    class="form-control"
+                    name="datos_morfometricos"
+                    rows="2"
+                    placeholder='{"peso": 50}'
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-success">Registrar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="modal fade"
+      id="modalEditarEjemplar"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5>✏️ Editar Datos de Ejemplar</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <form id="formEditarEjemplar">
+            <input type="hidden" id="edit_ej_numero_coleccion" />
+            <div class="modal-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Tipo Colección</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    id="edit_ej_tipo"
+                    name="tipo_coleccion"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Departamento</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    id="edit_ej_depto"
+                    name="departamento"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Municipio</label
+                  ><input
+                    type="text"
+                    class="form-control"
+                    id="edit_ej_municipio"
+                    name="municipio"
+                  />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Fecha Determ.</label
+                  ><input
+                    type="date"
+                    class="form-control"
+                    id="edit_ej_fecha"
+                    name="fecha_determinacion"
+                  />
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Morfometría (JSON)</label
+                  ><textarea
+                    class="form-control"
+                    id="edit_ej_morfometria"
+                    name="datos_morfometricos"
+                    rows="3"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn btn-primary">
+                Guardar Cambios
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      let especieActualId = null;
+      const bootstrapModals = {
+        ficha: new bootstrap.Modal("#modalFichaTecnica"),
+        inventario: new bootstrap.Modal("#modalEjemplares"),
+        nuevaEsp: new bootstrap.Modal("#modalNuevaEspecie"),
+        editarEsp: new bootstrap.Modal("#modalEditarEspecie"),
+        nuevoEj: new bootstrap.Modal("#modalNuevoEjemplar"),
+        editarEj: new bootstrap.Modal("#modalEditarEjemplar"),
+      };
+      const EspecieService = {
+        async obtenerPorId(id) {
+          const response = await fetch(`/admin/especies/${id}`);
+          if (!response.ok)
+            throw new Error("Error al consultar el servicio de especies.");
+          return await response.json();
+        },
+      };
+
+      // --- FICHA TÉCNICA ---
+      async function verFichaTecnica(id) {
+        const contenedor = document.getElementById("contenidoFicha");
+        contenedor.innerHTML =
+          '<div class="text-center p-4"><div class="spinner-border text-primary"></div></div>';
+        bootstrapModals.ficha.show();
+
+        try {
+          // Usamos el servicio modular
+          const esp = await EspecieService.obtenerPorId(id);
+
+          // Maquetación de detalle completa
+          contenedor.innerHTML = `
+            <div class="row g-4">
+                <div class="col-md-5">
+                    <div class="card shadow-sm">
+                        <img src="${esp.url_imagen || "https://via.placeholder.com/400x300?text=Sin+Imagen"}" class="card-img-top">
+                        <div class="card-body">
+                            <h6 class="fw-bold text-uppercase small text-muted">Registro Multimedia</h6>
+                            ${
+                              esp.url_audio
+                                ? `
+                                <div class="mt-2">
+                                    <label class="small">Vocalización:</label>
+                                    <audio controls class="w-100 mt-1"><source src="${esp.url_audio}" type="audio/mpeg"></audio>
+                                </div>
+                            `
+                                : '<p class="small text-muted mb-0">No hay audio registrado.</p>'
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h2 class="mb-0">${esp.nombre_comun}</h2>
+                            <p class="text-muted fst-italic mb-3">${esp.genero} ${esp.especie}</p>
+                        </div>
+                        <span class="badge ${esp.grupo === "Anfibio" ? "bg-success" : "bg-warning text-dark"}">${esp.grupo}</span>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-6"><strong>Familia:</strong><br>${esp.familia || "N/A"}</div>
+                        <div class="col-6"><strong>Orden:</strong><br>${esp.orden || "N/A"}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <h6 class="fw-bold border-bottom pb-1">Biología y Ecología</h6>
+                        <p class="mb-1"><strong>Hábitat:</strong> ${esp.habitat || "Sin registrar"}</p>
+                        <p class="mb-1"><strong>Dieta:</strong> ${esp.dieta || "Sin registrar"}</p>
+                        <p class="mb-1"><strong>Toxicidad:</strong> <span class="badge bg-danger">${esp.nivel_toxicidad || "Nula"}</span></p>
+                    </div>
+
+                    <div class="p-3 bg-light rounded border-start border-4 border-info">
+                        <h6 class="fw-bold mb-1 small">Curiosidades Científicas:</h6>
+                        <p class="mb-0 small">${esp.curiosidades || "No hay notas adicionales."}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        } catch (error) {
+          contenedor.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+        }
+      }
+      // --- ESPECIES ---
+      async function abrirEditarEspecie(id) {
+        const res = await fetch(`/admin/especies/${id}`);
+        const esp = await res.json();
+        document.getElementById("edit_especie_id").value = esp.id;
+        document.getElementById("edit_nombre_comun").value =
+          esp.nombre_comun || "";
+        document.getElementById("edit_familia").value = esp.familia || "";
+        document.getElementById("edit_orden").value = esp.orden || "";
+        document.getElementById("edit_habitat").value = esp.habitat || "";
+        document.getElementById("edit_dieta").value = esp.dieta || "";
+        document.getElementById("edit_toxicidad").value =
+          esp.nivel_toxicidad || "";
+        document.getElementById("edit_url_imagen").value = esp.url_imagen || "";
+        document.getElementById("edit_url_audio").value = esp.url_audio || "";
+        document.getElementById("edit_curiosidades").value =
+          esp.curiosidades || "";
+        bootstrapModals.editarEsp.show();
+      }
+
+      document
+        .getElementById("formEditarEspecie")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const id = document.getElementById("edit_especie_id").value;
+          const res = await fetch(`/admin/especies/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(Object.fromEntries(new FormData(e.target))),
+          });
+          if (res.ok) window.location.reload();
+        });
+
+      document
+        .getElementById("formNuevaEspecie")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const res = await fetch("/admin/especies", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(Object.fromEntries(new FormData(e.target))),
+          });
+          if (res.ok) window.location.reload();
+        });
+
+      async function eliminarEspecie(id) {
+        if (confirm("¿Borrar especie?")) {
+          const res = await fetch(`/admin/especies/${id}`, {
+            method: "DELETE",
+          });
+          if (res.ok) window.location.reload();
+          else {
+            const err = await res.json();
+            alert(err.detail);
+          }
+        }
+      }
+
+      // --- EJEMPLARES ---
+      async function abrirGestorEjemplares(id) {
+        especieActualId = id;
+        bootstrapModals.inventario.show();
+        const res = await fetch(`/admin/especies/${id}/ejemplares`);
+        const data = await res.json();
+        const body = document.getElementById("tablaEjemplaresBody");
+        body.innerHTML =
+          data
+            .map(
+              (ej) => `
+                <tr>
+                    <td><strong>${ej.numero_coleccion}</strong></td>
+                    <td>${ej.tipo_coleccion || "N/A"}</td>
+                    <td>${ej.en_exhibicion ? "✅" : "❌"}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="abrirEditarEjemplar('${ej.numero_coleccion}')">Editar</button>
+                        <button class="btn btn-sm btn-danger ms-1" onclick="borrarFrasco('${ej.numero_coleccion}')">Baja</button>
+                    </td>
+                </tr>`,
+            )
+            .join("") ||
+          '<tr><td colspan="4" class="text-center">Sin ejemplares</td></tr>';
+      }
+
+      async function abrirEditarEjemplar(num) {
+        const res = await fetch(`/admin/ejemplares/${num}`);
+        const data = await res.json();
+        const ej = data.datos_fisicos;
+        document.getElementById("edit_ej_numero_coleccion").value =
+          ej.numero_coleccion;
+        document.getElementById("edit_ej_tipo").value = ej.tipo_coleccion || "";
+        document.getElementById("edit_ej_depto").value = ej.departamento || "";
+        document.getElementById("edit_ej_municipio").value = ej.municipio || "";
+        document.getElementById("edit_ej_fecha").value =
+          ej.fecha_determinacion || "";
+        document.getElementById("edit_ej_morfometria").value = JSON.stringify(
+          ej.datos_morfometricos || {},
+          null,
+          2,
+        );
+        bootstrapModals.editarEj.show();
+      }
+
+      document
+        .getElementById("formEditarEjemplar")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const num = document.getElementById("edit_ej_numero_coleccion").value;
+          const datos = Object.fromEntries(new FormData(e.target));
+          try {
+            datos.datos_morfometricos = JSON.parse(
+              datos.datos_morfometricos || "{}",
+            );
+          } catch (e) {
+            alert("JSON Inválido");
+            return;
+          }
+          const res = await fetch(`/admin/ejemplares/${num}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(datos),
+          });
+          if (res.ok) {
+            bootstrapModals.editarEj.hide();
+            abrirGestorEjemplares(especieActualId);
+          }
+        });
+
+      function abrirNuevoEjemplar() {
+        bootstrapModals.nuevoEj.show();
+      }
+
+      document
+        .getElementById("formNuevoEjemplar")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          const datos = Object.fromEntries(formData.entries());
+          datos.especie_id = especieActualId;
+          try {
+            datos.datos_morfometricos = JSON.parse(
+              datos.datos_morfometricos || "{}",
+            );
+          } catch (e) {
+            datos.datos_morfometricos = {};
+          }
+
+          const res = await fetch("/admin/ejemplares", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(datos),
+          });
+          if (res.ok) {
+            bootstrapModals.nuevoEj.hide();
+            abrirGestorEjemplares(especieActualId);
+          }
+        });
+
+      async function borrarFrasco(num) {
+        if (confirm("¿Borrar ejemplar?")) {
+          await fetch(`/admin/ejemplares/${num}`, { method: "DELETE" });
+          abrirGestorEjemplares(especieActualId);
+        }
+      }
+      // Función modular de búsqueda en tiempo real
+      // Función modular de búsqueda inteligente
+      document
+        .getElementById("buscadorEspecies")
+        .addEventListener("keyup", function (e) {
+          const termino = e.target.value.trim().toLowerCase();
+          const filas = document.querySelectorAll("tbody tr");
+          let encontrados = 0;
+
+          // ¿Es el término un número puro? (Para búsqueda exacta de ID)
+          const esNumeroPuro = /^\d+$/.test(termino);
+
+          filas.forEach((fila) => {
+            // Obtenemos el ID (primera columna) y todo el texto de la fila
+            const idFila = fila
+              .querySelector("td:first-child")
+              .innerText.trim()
+              .toLowerCase();
+            const textoCompleto = fila.innerText.toLowerCase();
+
+            let mostrar = false;
+
+            if (esNumeroPuro) {
+              // Si el usuario escribió un número, buscamos coincidencia EXACTA en el ID
+              if (idFila === termino) {
+                mostrar = true;
+              }
+            } else {
+              // Si escribió letras, buscamos en toda la fila (como antes)
+              if (textoCompleto.includes(termino)) {
+                mostrar = true;
+              }
+            }
+
+            // Aplicamos la visibilidad
+            if (mostrar) {
+              fila.style.display = "";
+              encontrados++;
+            } else {
+              fila.style.display = "none";
+            }
+          });
+
+          // Actualizar contador
+          const contador = document.getElementById("contadorResultados");
+          if (termino === "") {
+            contador.innerText = "Mostrando todos los registros";
+          } else {
+            contador.innerText = `Resultados encontrados: ${encontrados}`;
+          }
+        });
+    </script>
+  </body>
 </html>

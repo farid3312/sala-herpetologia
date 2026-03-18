@@ -60,3 +60,37 @@ class EjemplarResponse(EjemplarBase):
     
     class Config:
         from_attributes = True # Permite que Pydantic lea modelos de SQLAlchemy
+class EspecieUpdate(BaseModel):
+    # Todos los campos son opcionales para permitir actualizaciones parciales (PATCH/PUT)
+    grupo: Optional[str] = Field(None, description="Clasificación principal (Anfibio/Reptil)")
+    genero: Optional[str] = None
+    especie: Optional[str] = None
+    nombre_comun: Optional[str] = None
+    familia: Optional[str] = None
+    orden: Optional[str] = None
+    dieta: Optional[str] = None
+    habitat: Optional[str] = None
+    curiosidades: Optional[str] = None
+    nivel_toxicidad: Optional[str] = None
+    url_imagen: Optional[str] = None
+    url_audio: Optional[str] = None
+
+    # Reutilizamos tu excelente validador de grupo si es que deciden enviarlo
+    @field_validator("grupo")
+    def validar_grupo(cls, v):
+        if v is not None and v not in ["Anfibio", "Reptil"]:
+            raise ValueError(f"Grupo no válido: {v}. Debe ser 'Anfibio' o 'Reptil'")
+        return v
+class EjemplarUpdate(BaseModel):
+    # Opcional: Permitimos reasignar el frasco a otra especie (útil si hubo un error de identificación biológica)
+    especie_id: Optional[int] = None 
+    tipo_coleccion: Optional[str] = None
+    en_exhibicion: Optional[bool] = None
+    fecha_determinacion: Optional[date] = None
+    latitud_decimal: Optional[Decimal] = None
+    longitud_decimal: Optional[Decimal] = None
+    departamento: Optional[str] = None
+    municipio: Optional[str] = None
+    
+    # El diccionario de métricas. Pydantic verificará que al menos sea un JSON válido.
+    datos_morfometricos: Optional[Dict[str, Any]] = None
