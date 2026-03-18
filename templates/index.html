@@ -3,27 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catálogo de Herpetología</title>
+    <title>Catálogo de Herpetología - Museo</title>
     
     <link rel="icon" href="{{ url_for('static', path='favicon.ico') }}" type="image/x-icon">
+    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
     
     <style>
-        /* Estilos base con imagen de fondo en Mosaico Pequeño */
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
             padding: 0;
             background-image: url("{{ url_for('static', path='fondo detalle.png') }}");
             background-repeat: repeat; 
-            
-            /* AQUÍ ESTÁ EL CAMBIO: Forzamos a que la imagen sea pequeña (150px) para que se repita muchas veces */
             background-size: 450px; 
-            
             background-attachment: fixed; 
             background-color: #2c5364; 
         }
 
-        /* Barra de navegación superior */
         header {
             background-color: rgba(44, 83, 100, 0.95);
             color: white;
@@ -31,118 +27,107 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
         }
 
-        header h1 {
-            margin: 0;
-            font-size: 1.5rem;
-        }
-
-        /* Botón de Login en la esquina */
-        .btn-admin {
-            background-color: rgba(255, 255, 255, 0.2);
+        .btn-inicio {
+            background-color: #1d3a47;
             color: white;
             text-decoration: none;
-            padding: 8px 16px;
+            padding: 8px 20px;
             border-radius: 8px;
             font-weight: bold;
-            transition: background 0.3s, transform 0.2s;
-            border: 1px solid rgba(255, 255, 255, 0.4);
+            transition: 0.3s;
+            border: 1px solid rgba(255,255,255,0.2);
         }
 
-        .btn-admin:hover {
+        .btn-inicio:hover {
             background-color: white;
             color: #2c5364;
-            transform: scale(1.05);
         }
 
-        /* Contenedor de la Galería */
         .container {
-            padding: 20px;
-            max-width: 1000px;
+            padding: 40px 20px;
+            max-width: 1200px;
             margin: auto;
         }
 
-        /* Fondo semitransparente para que el título se lea sobre la imagen */
         .titulo-galeria {
             text-align: center;
             color: #fff;
             background-color: rgba(44, 83, 100, 0.8);
-            padding: 10px;
-            border-radius: 10px;
+            padding: 15px 30px;
+            border-radius: 15px;
             max-width: fit-content;
-            margin: 0 auto 20px auto;
+            margin: 0 auto 40px auto;
+            backdrop-filter: blur(5px);
         }
 
         .galeria {
             display: flex;
             flex-wrap: wrap;
-            gap: 25px;
+            gap: 30px;
             justify-content: center;
-            margin-top: 20px;
         }
 
-        .card {
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
-            width: 250px;
-            text-align: center;
-            transition: transform 0.3s;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-        }
-
-        .card img {
-            width: 100%;
-            height: 180px;
-            object-fit: cover;
-        }
-
-        .card h3 {
-            margin: 15px 0;
-            color: #333;
-        }
-
-        .btn-ficha {
-            display: inline-block;
-            margin-bottom: 20px;
-            padding: 10px 20px;
-            background-color: #2c5364;
+        .no-data {
             color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 0.9rem;
-            transition: background 0.3s;
-        }
-        
-        .btn-ficha:hover {
-            background-color: #1d3a47;
+            text-align: center;
+            background: rgba(0,0,0,0.5);
+            padding: 20px;
+            border-radius: 10px;
         }
     </style>
 </head>
 <body>
 
     <header>
-        <div style="display: flex; gap: 15px; align-items: center;">
-            <a href="{{ url_for('inicio') }}" class="btn-admin" style="background-color: #1d3a47;">🏠 Inicio</a>
-            <h1>Sala de Herpetología</h1>
+        <div style="display: flex; gap: 20px; align-items: center;">
+            <a href="/" class="btn-inicio">🏠 Inicio</a>
+            <h1 style="margin:0; font-size: 1.4rem;">Sala de Herpetología</h1>
         </div>
+        <span style="font-size: 0.9rem; opacity: 0.8;">Museo Interactivo</span>
     </header>
 
     <div class="container">
-        <h2 class="titulo-galeria">Explora nuestra colección</h2>
+        <h2 class="titulo-galeria">Explora nuestra colección biológica</h2>
         
         <div class="galeria">
             {% for especie in especies %}
-            <div class="card">
-                <img src="{{ especie.imagen_url }}" alt="{{ especie.nombre_comun }}">
-                <h3>{{ especie.nombre_comun }}</h3>
-                <a href="{{ url_for('detalle_especie', id_especie=especie.id) }}" class="btn-ficha">Ver Ficha Técnica</a>
+            <div class="card-container">
+                <div class="card-inner">
+                    
+                    <div class="card-front">
+                        <img src="{{ especie.url_imagen }}" alt="{{ especie.nombre_comun }}">
+                        <h3>{{ especie.nombre_comun }}</h3>
+                        <div class="badge-grupo">{{ especie.grupo }}</div>
+                        <p style="margin-top: 10px; font-style: italic; color: #666; font-size: 0.8rem;">
+                            Pasa el mouse para ver detalles
+                        </p>
+                    </div>
+
+                    <div class="card-back">
+                        <h4>{{ especie.nombre_comun }}</h4>
+                        <p><strong>Científico:</strong> <em>{{ especie.genero }} {{ especie.especie }}</em></p>
+                        <p><strong>Familia:</strong> {{ especie.familia }}</p>
+                        <p><strong>Orden:</strong> {{ especie.orden }}</p>
+                        <p><strong>Hábitat:</strong> {{ especie.habitat }}</p>
+                        <p><strong>Dieta:</strong> {{ especie.dieta }}</p>
+                        <p><strong>Toxicidad:</strong> {{ especie.nivel_toxicidad }}</p>
+                        <p style="font-size: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
+                            <strong>Dato curioso:</strong> {{ especie.curiosidades[:100] }}...
+                        </p>
+                    </div>
+
+                </div>
+            </div>
+            {% else %}
+            <div class="no-data">
+                <h3>Aún no hay especies en la base de datos.</h3>
+                <p>Por favor, usa el panel de administrador para importar el catálogo.</p>
             </div>
             {% endfor %}
         </div>
