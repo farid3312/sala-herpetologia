@@ -41,9 +41,19 @@ async def procesar_login(
     return RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_302_FOUND)
 
 @router.get("/dashboard", response_class=HTMLResponse, summary="Panel principal de Administrador")
-async def admin_dashboard(request: Request):
-    """Renderiza el menú principal del administrador"""
-    return templates.TemplateResponse("admin.html", {"request": request})
+async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
+    """
+    Carga el panel de administración y obtiene todas las especies 
+    directamente de la base de datos para mostrarlas en la tabla.
+    """
+    # Consultamos todas las especies de la tabla 'especies'
+    especies_db = db.query(Especie).all()
+    
+    # Enviamos la lista de especies al template admin.html
+    return templates.TemplateResponse("admin.html", {
+        "request": request, 
+        "especies": especies_db
+    })
 
 
 # ==========================================

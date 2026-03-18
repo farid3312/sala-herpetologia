@@ -3,28 +3,54 @@
 {% block content %}
 <style>
     body {
-        /* Cambia 'fondo.png' por el nombre real de tu imagen en la carpeta static */
         background-image: url("{{ url_for('static', path='fondoimportar.png') }}");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
     }
-    /* Hacemos la tarjeta un poco transparente para que se vea el fondo */
+
+    /* Botón para volver al Dashboard administrativo */
+    .btn-back {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background-color: #2c5364;
+        color: white;
+        padding: 10px 18px;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: bold;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        transition: 0.3s;
+        z-index: 1000;
+        border: none;
+    }
+
+    .btn-back:hover {
+        background-color: #1d3a47;
+        color: #00d2ff;
+        transform: scale(1.05);
+    }
+
     .card.shadow {
         background: rgba(255, 255, 255, 0.92);
         backdrop-filter: blur(5px);
+        border: none;
+        border-radius: 15px;
     }
 </style>
 
+<a href="/admin/dashboard" class="btn-back">⬅️ Regresar al Panel</a>
+
 <div class="row justify-content-center mt-5">
   <div class="col-md-6">
-    <div class="card shadow border-0 rounded-lg">
+    <div class="card shadow rounded-lg">
       <div class="card-header bg-primary text-white text-center">
         <h5 class="mb-0">Importación Masiva de Catálogo (CSV)</h5>
       </div>
       <div class="card-body p-4">
         <p class="text-muted small text-center mb-4">
-          Selecciona el archivo corregido con el formato oficial.
+          Selecciona el archivo corregido con el formato oficial para actualizar el inventario.
         </p>
         <form id="uploadForm">
           <div class="mb-4">
@@ -37,7 +63,7 @@
             />
           </div>
           <button type="submit" class="btn btn-success btn-lg w-100 fw-bold" id="btnImportar">
-            Iniciar Carga en PostgreSQL
+            🚀 Iniciar Carga en PostgreSQL
           </button>
         </form>
         <div id="statusMessage" class="mt-3"></div>
@@ -58,7 +84,7 @@
 
     btn.disabled = true;
     status.innerHTML =
-      '<div class="alert alert-info fw-bold">⏳ Procesando archivo...</div>';
+      '<div class="alert alert-info fw-bold animate__animated animate__fadeIn">⏳ Procesando archivo... esto puede tardar unos segundos.</div>';
 
     try {
       const response = await fetch("/admin/datos/importar-csv/", {
