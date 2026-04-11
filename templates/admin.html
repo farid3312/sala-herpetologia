@@ -298,12 +298,22 @@
                   ><input type="text" class="form-control" name="dieta" />
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label">URL Imagen</label
-                  ><input type="url" class="form-control" name="url_imagen" />
+                  <label class="form-label">Cargar Imagen</label>
+                  <input
+                    type="file"
+                    class="form-control"
+                    id="nueva_img_file"
+                    accept="image/*"
+                  />
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label">URL Audio</label
-                  ><input type="url" class="form-control" name="url_audio" />
+                  <label class="form-label">Cargar Audio</label>
+                  <input
+                    type="file"
+                    class="form-control"
+                    id="nueva_aud_file"
+                    accept="audio/*"
+                  />
                 </div>
                 <div class="col-12">
                   <label class="form-label">Curiosidades</label
@@ -400,22 +410,28 @@
                   />
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label">URL Imagen</label
-                  ><input
-                    type="url"
+                  <label class="form-label">Actualizar Imagen</label>
+                  <input
+                    type="file"
                     class="form-control"
-                    id="edit_url_imagen"
-                    name="url_imagen"
+                    id="edit_img_file"
+                    accept="image/*"
                   />
+                  <small class="text-muted"
+                    >Deja vacío para mantener la actual.</small
+                  >
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label">URL Audio</label
-                  ><input
-                    type="url"
+                  <label class="form-label">Actualizar Audio</label>
+                  <input
+                    type="file"
                     class="form-control"
-                    id="edit_url_audio"
-                    name="url_audio"
+                    id="edit_aud_file"
+                    accept="audio/*"
                   />
+                  <small class="text-muted"
+                    >Deja vacío para mantener el actual.</small
+                  >
                 </div>
                 <div class="col-12">
                   <label class="form-label">Curiosidades</label
@@ -713,29 +729,115 @@
         bootstrapModals.editarEsp.show();
       }
 
+      // --- REEMPLAZA TU LISTENER ACTUAL DE EDICIÓN POR ESTE ---
       document
         .getElementById("formEditarEspecie")
         .addEventListener("submit", async (e) => {
           e.preventDefault();
-          const id = document.getElementById("edit_especie_id").value;
-          const res = await fetch(`/admin/especies/${id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(Object.fromEntries(new FormData(e.target))),
-          });
-          if (res.ok) window.location.reload();
+
+          // Bloquear el botón para evitar que el admin envíe dos veces por accidente
+          const btnSubmit = e.target.querySelector('button[type="submit"]');
+          const textoOriginal = btnSubmit.innerText;
+          btnSubmit.disabled = true;
+          btnSubmit.innerText = "Guardando cambios...";
+
+          try {
+            const id = document.getElementById("edit_especie_id").value;
+            const formData = new FormData(e.target);
+            const datos = Object.fromEntries(formData.entries());
+
+            // 1. Capturamos los campos de archivo
+            const inputImg = document.getElementById("edit_img_file");
+            const inputAud = document.getElementById("edit_aud_file");
+
+            // 2. Lógica Inteligente para la Imagen
+            // Solo intentamos subir si el admin seleccionó un archivo NUEVO
+            if (inputImg && inputImg.files.length > 0) {
+              datos.url_imagen = await subirArchivoAlServidor(inputImg);
+            } else {
+              // CRÍTICO: Si no subió nada, borramos este campo del JSON.
+              // Así el backend (FastAPI) ignora este campo y conserva la imagen anterior.
+              delete datos.url_imagen;
+            }
+
+            // 3. Lógica Inteligente para el Audio
+            if (inputAud && inputAud.files.length > 0) {
+              datos.url_audio = await subirArchivoAlServidor(inputAud);
+            } else {
+              delete datos.url_audio;
+            }
+
+            // 4. Enviamos los datos estructurados al Backend
+            const res = await fetch(`/admin/especies/${id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(datos),
+            });
+
+            if (res.ok) {
+              window.location.reload();
+            } else {
+              const err = await res.json();
+              alert(
+                "Error al actualizar la especie: " +
+                  (err.detail || "Desconocido"),
+              );
+            }
+          } catch (error) {
+            alert("Error crítico en la ejecución: " + error.message);
+          } finally {
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = textoOriginal;
+          }
         });
 
       document
         .getElementById("formNuevaEspecie")
         .addEventListener("submit", async (e) => {
           e.preventDefault();
-          const res = await fetch("/admin/especies", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(Object.fromEntries(new FormData(e.target))),
-          });
-          if (res.ok) window.location.reload();
+
+          // Bloquear el botón para evitar envíos dobles por error
+          const btnSubmit = e.target.querySelector('button[type="submit"]');
+          const textoOriginal = btnSubmit.innerText;
+          btnSubmit.disabled = true;
+          btnSubmit.innerText = "Procesando archivos...";
+
+          try {
+            const formData = new FormData(e.target);
+            const datos = Object.fromEntries(formData.entries());
+
+            // 1. Interceptar e intentar subir archivos
+            const inputImg = document.getElementById("nueva_img_file");
+            const inputAud = document.getElementById("nueva_aud_file");
+
+            const rutaImg = await subirArchivoAlServidor(inputImg);
+            const rutaAud = await subirArchivoAlServidor(inputAud);
+
+            // 2. Asignar las rutas a los campos que la Base de Datos espera
+            if (rutaImg) datos.url_imagen = rutaImg;
+            if (rutaAud) datos.url_audio = rutaAud;
+
+            // 3. Enviar el JSON limpio a la base de datos
+            const res = await fetch("/admin/especies", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(datos),
+            });
+
+            if (res.ok) {
+              window.location.reload();
+            } else {
+              const err = await res.json();
+              alert(
+                "Error en la base de datos: " + (err.detail || "Desconocido"),
+              );
+            }
+          } catch (error) {
+            alert("Error crítico: " + error.message);
+          } finally {
+            btnSubmit.disabled = false;
+            btnSubmit.innerText = textoOriginal;
+          }
         });
 
       async function eliminarEspecie(id) {
@@ -776,23 +878,32 @@
           '<tr><td colspan="4" class="text-center">Sin ejemplares</td></tr>';
       }
 
-      async function abrirEditarEjemplar(num) {
-        const res = await fetch(`/admin/ejemplares/${num}`);
-        const data = await res.json();
-        const ej = data.datos_fisicos;
-        document.getElementById("edit_ej_numero_coleccion").value =
-          ej.numero_coleccion;
-        document.getElementById("edit_ej_tipo").value = ej.tipo_coleccion || "";
-        document.getElementById("edit_ej_depto").value = ej.departamento || "";
-        document.getElementById("edit_ej_municipio").value = ej.municipio || "";
-        document.getElementById("edit_ej_fecha").value =
-          ej.fecha_determinacion || "";
-        document.getElementById("edit_ej_morfometria").value = JSON.stringify(
-          ej.datos_morfometricos || {},
-          null,
-          2,
-        );
-        bootstrapModals.editarEj.show();
+      async function abrirEditarEspecie(id) {
+        try {
+          const res = await fetch(`/admin/especies/${id}`);
+          const esp = await res.json();
+
+          document.getElementById("edit_especie_id").value = esp.id;
+          document.getElementById("edit_nombre_comun").value =
+            esp.nombre_comun || "";
+          document.getElementById("edit_familia").value = esp.familia || "";
+          document.getElementById("edit_orden").value = esp.orden || "";
+          document.getElementById("edit_habitat").value = esp.habitat || "";
+          document.getElementById("edit_dieta").value = esp.dieta || "";
+          document.getElementById("edit_toxicidad").value =
+            esp.nivel_toxicidad || "";
+          document.getElementById("edit_curiosidades").value =
+            esp.curiosidades || "";
+
+          // NOTA ANALÍTICA: Eliminamos las líneas que intentaban asignar valores
+          // a las URLs de imagen y audio. Los campos <input type="file"> deben
+          // quedar vacíos por defecto. Si el usuario no sube nada nuevo, el
+          // evento 'submit' que hicimos antes se encargará de mantener los datos actuales.
+
+          bootstrapModals.editarEsp.show();
+        } catch (error) {
+          alert("Error al cargar los datos para editar: " + error.message);
+        }
       }
 
       document
@@ -907,6 +1018,25 @@
             contador.innerText = `Resultados encontrados: ${encontrados}`;
           }
         });
+      // Servicio modular para manejar carga de archivos binarios
+      async function subirArchivoAlServidor(fileInput) {
+        if (!fileInput.files || fileInput.files.length === 0) return null;
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        // Este endpoint deberá ser creado en FastAPI
+        const response = await fetch("/admin/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok)
+          throw new Error("Falló la carga del archivo en el servidor.");
+
+        const data = await response.json();
+        return data.ruta; // Retorna algo como "/data/archivo.png"
+      }
     </script>
   </body>
 </html>

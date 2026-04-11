@@ -1,13 +1,15 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+import os
+from pathlib import Path
 
 # Importaciones de tu arquitectura modular
 from app.api.api_router import api_router
 from app.database import engine, Base
 
 
-
+Path("data").mkdir(exist_ok=True)
 # 1. Creación de tablas en PostgreSQL
 # Esto asegura que al arrancar, las tablas existan antes de cualquier petición
 Base.metadata.create_all(bind=engine)
