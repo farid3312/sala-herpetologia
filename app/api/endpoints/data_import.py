@@ -7,6 +7,9 @@ import os
 from app.database import get_db
 from app.services.import_service import procesar_csv_museo
 
+# Importamos el guardia de seguridad
+from app.api.endpoints.admin import verificar_sesion_admin
+
 # Creamos un enrutador específico para esta funcionalidad
 router = APIRouter()
 
