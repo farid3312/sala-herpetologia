@@ -3,6 +3,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import os
 from pathlib import Path
+# 1. El Middleware para el túnel y el celular
+from fastapi.middleware.cors import CORSMiddleware
+
+# 2. ¡ESTA ES LA LÍNEA QUE SE BORRÓ! El guardia de seguridad
+from app.api.endpoints.admin import verificar_sesion_admin
 
 # Importaciones de tu arquitectura modular
 from app.api.api_router import api_router
