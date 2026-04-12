@@ -1,15 +1,15 @@
 from fastapi import FastAPI, Request, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware # <-- NUEVO: Importación para seguridad y túneles
+import os
+from pathlib import Path
 
 # Importaciones de tu arquitectura modular
 from app.api.api_router import api_router
 from app.database import engine, Base
 
-# Importamos el guardia de seguridad
-from app.api.endpoints.admin import verificar_sesion_admin
 
+Path("data").mkdir(exist_ok=True)
 # 1. Creación de tablas en PostgreSQL
 # Esto asegura que al arrancar, las tablas existan antes de cualquier petición
 Base.metadata.create_all(bind=engine)

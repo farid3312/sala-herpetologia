@@ -1,137 +1,369 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Catálogo de Herpetología - Museo</title>
-    
-    <link rel="icon" href="{{ url_for('static', path='favicon.ico') }}" type="image/x-icon">
-    <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
-    
+
+    <link
+      rel="icon"
+      href="{{ url_for('static', path='favicon.ico') }}"
+      type="image/x-icon"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', path='css/style.css') }}"
+    />
+
     <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-image: url("{{ url_for('static', path='fondo detalle.png') }}");
-            background-repeat: repeat; 
-            background-size: 450px; 
-            background-attachment: fixed; 
-            background-color: #2c5364; 
-        }
+      body {
+        font-family: "Segoe UI", Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-image: url("{{ url_for('static', path='fondo detalle.png') }}");
+        background-repeat: repeat;
+        background-size: 450px;
+        background-attachment: fixed;
+        background-color: #2c5364;
+      }
 
-        header {
-            background-color: rgba(44, 83, 100, 0.95);
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-        }
+      header {
+        background-color: rgba(44, 83, 100, 0.95);
+        color: white;
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+      }
 
-        .btn-inicio {
-            background-color: #1d3a47;
-            color: white;
-            text-decoration: none;
-            padding: 8px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            transition: 0.3s;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
+      .btn-inicio {
+        background-color: #1d3a47;
+        color: white;
+        text-decoration: none;
+        padding: 8px 20px;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: 0.3s;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
 
-        .btn-inicio:hover {
-            background-color: white;
-            color: #2c5364;
-        }
+      .btn-inicio:hover {
+        background-color: white;
+        color: #2c5364;
+      }
+      /* --- INTERFAZ DEL CHAT GLOBAL --- */
+      .chat-fab {
+        position: fixed;
+        bottom: 50px;
+        right: 50px;
+        width: 105px;
+        height: 95px;
+        background-color: #9104f6; /* Color llamativo para invitar a la acción */
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        z-index: 99999;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        transition: transform 0.3s ease;
+        border: 3px solid white;
+      }
+      .chat-fab:hover {
+        transform: scale(1.1);
+      }
 
-        .container {
-            padding: 40px 20px;
-            max-width: 1200px;
-            margin: auto;
-        }
+      .chat-window {
+        position: fixed;
+        bottom: 110px;
+        right: 30px;
+        width: 350px;
+        max-height: 500px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+        display: flex;
+        flex-direction: column;
+        z-index: 100000;
+        overflow: hidden;
+      }
 
-        .titulo-galeria {
-            text-align: center;
-            color: #fff;
-            background-color: rgba(44, 83, 100, 0.8);
-            padding: 15px 30px;
-            border-radius: 15px;
-            max-width: fit-content;
-            margin: 0 auto 40px auto;
-            backdrop-filter: blur(5px);
-        }
+      .chat-header {
+        background: #2c5364;
+        color: white;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
 
-        .galeria {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 30px;
-            justify-content: center;
-        }
+      .btn-close-chat {
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 1.2rem;
+        cursor: pointer;
+      }
 
-        .no-data {
-            color: white;
-            text-align: center;
-            background: rgba(0,0,0,0.5);
-            padding: 20px;
-            border-radius: 10px;
-        }
+      .chat-messages {
+        flex-grow: 1;
+        overflow-y: auto;
+        background: #f4f7f6;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        height: 300px;
+      }
+
+      .msg-bot,
+      .msg-user {
+        padding: 10px 15px;
+        border-radius: 15px;
+        font-size: 0.9rem;
+        max-width: 85%;
+        word-wrap: break-word;
+      }
+
+      .msg-bot {
+        background: #e9ecef;
+        align-self: flex-start;
+        color: #333;
+        border-bottom-left-radius: 2px;
+      }
+      .msg-user {
+        background: #2c5364;
+        color: white;
+        align-self: flex-end;
+        border-bottom-right-radius: 2px;
+      }
+
+      .chat-input-area {
+        display: flex;
+        padding: 10px;
+        background: white;
+        border-top: 1px solid #ddd;
+      }
+
+      .chat-input {
+        flex-grow: 1;
+        border: 1px solid #ccc;
+        border-radius: 20px;
+        padding: 8px 15px;
+        outline: none;
+      }
+
+      .btn-enviar {
+        background: #2c5364;
+        color: white;
+        border: none;
+        border-radius: 20px;
+        padding: 0 15px;
+        margin-left: 10px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .d-none {
+        display: none !important;
+      }
+
+      .container {
+        padding: 40px 20px;
+        max-width: 1200px;
+        margin: auto;
+      }
+
+      .titulo-galeria {
+        text-align: center;
+        color: #fff;
+        background-color: rgba(44, 83, 100, 0.8);
+        padding: 15px 30px;
+        border-radius: 15px;
+        max-width: fit-content;
+        margin: 0 auto 40px auto;
+        backdrop-filter: blur(5px);
+      }
+
+      .galeria {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 30px;
+        justify-content: center;
+      }
+
+      .no-data {
+        color: white;
+        text-align: center;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 20px;
+        border-radius: 10px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
+    <div
+      id="chat-fab"
+      class="chat-fab"
+      onclick="toggleChat()"
+      title="Hablar con el Guía"
+    >
+      <span style="font-size: 3rem">💬</span>
+    </div>
 
-    <header>
-        <div style="display: flex; gap: 20px; align-items: center;">
-            <a href="/" class="btn-inicio">🏠 Inicio</a>
-            <h1 style="margin:0; font-size: 1.4rem;">Sala de Herpetología</h1>
+    <div id="chat-window" class="chat-window d-none">
+      <div
+        class="chat-header d-flex justify-content-between align-items-center"
+      >
+        <div>
+          <h6 class="mb-0 fw-bold" style="margin: 0">Guía Virtual del Museo</h6>
+          <small style="opacity: 0.8; font-size: 0.8rem"
+            >Pregúntame sobre la colección</small
+          >
         </div>
-        <span style="font-size: 0.9rem; opacity: 0.8;">Museo Interactivo</span>
+        <button class="btn-close-chat" onclick="toggleChat()">✖</button>
+      </div>
+
+      <div id="chat-messages" class="chat-messages">
+        <div class="msg-bot">
+          ¡Hola! Soy el guía de la Sala de Herpetología. ¿Sobre qué especie de
+          nuestra galería te gustaría aprender hoy?
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <input
+          type="text"
+          id="user-input"
+          class="chat-input"
+          placeholder="Ej: ¿Qué come la rana de cristal?"
+          onkeypress="if (event.key === 'Enter') enviarPreguntaGeneral();"
+        />
+        <button class="btn-enviar" onclick="enviarPreguntaGeneral()">
+          Enviar
+        </button>
+      </div>
+    </div>
+    <header>
+      <div style="display: flex; gap: 20px; align-items: center">
+        <a href="/" class="btn-inicio">🏠 Inicio</a>
+        <h1 style="margin: 0; font-size: 1.4rem">Sala de Herpetología</h1>
+      </div>
+      <span style="font-size: 0.9rem; opacity: 0.8">Museo Interactivo</span>
     </header>
 
     <div class="container">
-        <h2 class="titulo-galeria">Explora nuestra colección biológica</h2>
-        
-        <div class="galeria">
-            {% for especie in especies %}
-            <div class="card-container">
-                <div class="card-inner">
-                    
-                    <div class="card-front">
-                        <img src="{{ especie.url_imagen }}" alt="{{ especie.nombre_comun }}">
-                        <h3>{{ especie.nombre_comun }}</h3>
-                        <div class="badge-grupo">{{ especie.grupo }}</div>
-                        <p style="margin-top: 10px; font-style: italic; color: #666; font-size: 0.8rem;">
-                            Pasa el mouse para ver detalles
-                        </p>
-                    </div>
+      <h2 class="titulo-galeria">Explora nuestra colección biológica</h2>
 
-                    <div class="card-back">
-                        <h4>{{ especie.nombre_comun }}</h4>
-                        <p><strong>Científico:</strong> <em>{{ especie.genero }} {{ especie.especie }}</em></p>
-                        <p><strong>Familia:</strong> {{ especie.familia }}</p>
-                        <p><strong>Orden:</strong> {{ especie.orden }}</p>
-                        <p><strong>Hábitat:</strong> {{ especie.habitat }}</p>
-                        <p><strong>Dieta:</strong> {{ especie.dieta }}</p>
-                        <p><strong>Toxicidad:</strong> {{ especie.nivel_toxicidad }}</p>
-                        <p style="font-size: 0.75rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-                            <strong>Dato curioso:</strong> {{ especie.curiosidades[:100] }}...
-                        </p>
-                    </div>
+      <div class="galeria">
+        {% for especie in especies %}
+        <div class="card-container">
+          <div class="card-inner">
+            <div class="card-front">
+              <img
+                src="{{ especie.url_imagen }}"
+                alt="{{ especie.nombre_comun }}"
+              />
+              <h3>{{ especie.nombre_comun }}</h3>
+              <div class="badge-grupo">{{ especie.grupo }}</div>
+              <p
+                style="
+                  margin-top: 10px;
+                  font-style: italic;
+                  color: #666;
+                  font-size: 0.8rem;
+                "
+              >
+                Pasa el mouse para ver detalles
+              </p>
+            </div>
 
-                </div>
+            <div class="card-back">
+              <h4>{{ especie.nombre_comun }}</h4>
+              <p>
+                <strong>Científico:</strong>
+                <em>{{ especie.genero }} {{ especie.especie }}</em>
+              </p>
+              <p><strong>Familia:</strong> {{ especie.familia }}</p>
+              <p><strong>Orden:</strong> {{ especie.orden }}</p>
+              <p><strong>Hábitat:</strong> {{ especie.habitat }}</p>
+              <p><strong>Dieta:</strong> {{ especie.dieta }}</p>
+              <p><strong>Toxicidad:</strong> {{ especie.nivel_toxicidad }}</p>
+              <p
+                style="
+                  font-size: 0.75rem;
+                  border-top: 1px solid rgba(255, 255, 255, 0.1);
+                  padding-top: 10px;
+                "
+              >
+                <strong>Dato curioso:</strong> {{ especie.curiosidades[:300]
+                }}...
+              </p>
             </div>
-            {% else %}
-            <div class="no-data">
-                <h3>Aún no hay especies en la base de datos.</h3>
-                <p>Por favor, usa el panel de administrador para importar el catálogo.</p>
-            </div>
-            {% endfor %}
+          </div>
         </div>
+        {% else %}
+        <div class="no-data">
+          <h3>Aún no hay especies en la base de datos.</h3>
+          <p>
+            Por favor, usa el panel de administrador para importar el catálogo.
+          </p>
+        </div>
+        {% endfor %}
+      </div>
     </div>
+    <script>
+      function toggleChat() {
+        const chat = document.getElementById("chat-window");
+        chat.classList.toggle("d-none");
+        if (!chat.classList.contains("d-none")) {
+          document.getElementById("user-input").focus();
+        }
+      }
 
-</body>
+      async function enviarPreguntaGeneral() {
+        const input = document.getElementById("user-input");
+        const container = document.getElementById("chat-messages");
+        const msg = input.value.trim();
+
+        if (!msg) return;
+
+        // Mostrar pregunta
+        container.innerHTML += `<div class="msg-user">${msg}</div>`;
+        input.value = "";
+        container.scrollTop = container.scrollHeight;
+
+        // Indicador de estado
+        const typingId = "typing-" + Date.now();
+        container.innerHTML += `<div id="${typingId}" class="msg-bot text-muted" style="font-style: italic;">Buscando en la colección...</div>`;
+        container.scrollTop = container.scrollHeight;
+
+        try {
+          // Petición al endpoint (El backend sabrá que es una pregunta global)
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              pregunta: msg,
+              especie_id: "general",
+            }),
+          });
+
+          const data = await res.json();
+
+          document.getElementById(typingId)?.remove();
+          container.innerHTML += `<div class="msg-bot">${data.respuesta}</div>`;
+        } catch (e) {
+          const typingElem = document.getElementById(typingId);
+          if (typingElem)
+            typingElem.innerText = "Error de conexión. Intenta de nuevo.";
+        }
+        container.scrollTop = container.scrollHeight;
+      }
+    </script>
+  </body>
 </html>
+index.html Información general TipoHTML Mostrando index.html.

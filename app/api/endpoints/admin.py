@@ -8,13 +8,17 @@ import jwt
 from datetime import datetime, timedelta, timezone
 
 from app.database import get_db
-from app.models import Especie, UsuarioAdmin, EjemplarMuseo
-from app.schemas import EspecieCreate, EjemplarBase, EspecieUpdate, EjemplarUpdate
-from app.services import especie_service
-from app.services import ejemplar_service
-
-# Cargamos las variables del archivo .env
-load_dotenv()
+from app.models import Especie, UsuarioAdmin
+from app.schemas import EspecieCreate
+from app.services import especie_service # Importamos tu nuevo servicio
+from app.schemas import EjemplarBase # Asegúrate de importar esto arriba
+from app.services import ejemplar_service # Importamos el nuevo servicio
+from app.schemas import EspecieUpdate # <-- Importante arriba
+from app.schemas import EjemplarUpdate # <-- Importante arriba
+from pathlib import Path
+import shutil
+import os
+from fastapi import File, UploadFile
 
 router = APIRouter()
 
@@ -307,3 +311,36 @@ def listar_ejemplares_de_especie(
     """Devuelve la lista de todos los frascos físicos asociados a una especie biológica."""
     ejemplares = db.query(EjemplarMuseo).filter(EjemplarMuseo.especie_id == especie_id).all()
     return ejemplares
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+DATA_DIR = BASE_DIR / "data"
+
+# ATENCIÓN A LA RUTA:
+# Si en tu main.py incluiste este router de admin con prefix="/admin", 
+# entonces la ruta aquí debe ser solo "/upload".
+# Si no usas prefix, pon "/admin/upload".
+@router.post("/upload") 
+async def upload_file(file: UploadFile = File(...)):
+    """
+    Endpoint para subir imágenes y audios al servidor local (Sprint 2 - HU 2 y 5).
+    """
+    try:
+        # Asegurarse de que la carpeta data exista
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        
+        # Limpiar el nombre del archivo (reemplazar espacios por guiones bajos)
+        safe_filename = file.filename.replace(" ", "_")
+        file_path = DATA_DIR / safe_filename
+        
+        # Guardar físicamente el archivo
+        with file_path.open("wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        # Devolver la ruta relativa exacta que se guardará en PostgreSQL
+        return {"ruta": f"/data/{safe_filename}"}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error interno guardando el archivo físico: {str(e)}"
+        )
