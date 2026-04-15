@@ -99,22 +99,11 @@ import httpx
 
 @router.post("/api/chat")
 async def procesar_chat(request: ChatRequest, db: Session = Depends(get_db)):
-    # 1. Reglas estrictas, cortas y sin contradicciones lógicas
-    contexto_base = (
-        "Eres el guía virtual experto del Museo de Historia Natural de la Universidad del Cauca. "
-        "Tu objetivo es educar a los visitantes de forma precisa, científica y breve (máximo 3 oraciones) para que conteste rapido. "
-        "REGLA 1 (Prioridad Absoluta): Para describir el hábitat, dieta, nivel de toxicidad o curiosidades "
-        "específicas del animal, DEBES usar estrictamente la 'INFORMACIÓN DE LA ESPECIE' proporcionada en la base de datos y relaciona los nombre parecidos de las especies por si estan mal escritos. "
-        "ademas si no hay una especie en la base de datos por la cual se pregunto, en el mensaje tiene que decir no esta en nuestra base de datos brevemente y de primero en el mensaje, ese mensaje es de IMPORTANCIA, pero si contesta lo que pide"
-        "REGLA 2 (Conocimiento Extra): Si el visitante hace una pregunta sobre biología general, evolución, "
-        "o pide detalles científicos que no están en la información proporcionada, PUEDES usar tu conocimiento "
-        "científico previo para responder y complementar de forma educativa. "
-        "REGLA 3: Nunca inventes datos numéricos ni geográficos si no estás 100% seguro, " 
-    )
-    
     informacion_bd = ""
+    especie_encontrada = False # Bandera de control
     
     try:
+        # 1. BÚSQUEDA EXACTA Y DIFUSA EN PYTHON
         if request.especie_id != "general":
             especie = db.query(Especie).filter(Especie.id == int(request.especie_id)).first()
             if especie:
@@ -123,52 +112,64 @@ async def procesar_chat(request: ChatRequest, db: Session = Depends(get_db)):
                     f"Dieta: {especie.dieta} | Hábitat: {especie.habitat}\n"
                     f"Toxicidad: {especie.nivel_toxicidad} | Curiosidades: {especie.curiosidades}\n"
                 )
-            else:
-                informacion_bd = "[INSTRUCCIÓN PARA LA IA: Dile al visitante que no tenemos datos de esa especie.]"
-        
+                especie_encontrada = True
         else:
-            # Tu buscador funciona perfecto, lo dejamos igual usando request.pregunta
             pregunta_limpia = limpiar_texto(request.pregunta)
-            
             todas_las_especies = db.query(Especie).all()
-            especies_encontradas = []
+            especies_coincidentes = []
             
             for esp in todas_las_especies:
-                nombre_limpio = limpiar_texto(esp.nombre_comun)
-                if nombre_limpio in pregunta_limpia:
-                    especies_encontradas.append(esp)
+                if limpiar_texto(esp.nombre_comun) in pregunta_limpia:
+                    especies_coincidentes.append(esp)
             
-            if especies_encontradas:
-                informacion_bd = "\n--- INFORMACIÓN ENCONTRADA EN LA BASE DE DATOS ---\n"
-                for esp in especies_encontradas:
+            if especies_coincidentes:
+                informacion_bd = "\n--- INFORMACIÓN EN LA BASE DE DATOS ---\n"
+                for esp in especies_coincidentes:
                     informacion_bd += (
                         f"Especie: {esp.nombre_comun} ({esp.genero} {esp.especie})\n"
                         f"Dieta: {esp.dieta} | Hábitat: {esp.habitat}\n"
-                        f"Toxicidad: {esp.nivel_toxicidad}\n"
-                        f"Curiosidades: {esp.curiosidades}\n"
-                        f"---\n"
+                        f"Toxicidad: {esp.nivel_toxicidad} | Curiosidades: {esp.curiosidades}\n---\n"
                     )
-            else:
-                # El backend maneja el error, no le pedimos a la IA que decida
-                informacion_bd = "\n[INSTRUCCIÓN PARA LA IA: La especie consultada NO está en la base de datos. Informa esto amablemente y usa tu conocimiento general para responder la pregunta biológica del usuario.]\n"
+                especie_encontrada = True
 
     except Exception as e:
         print(f"Error CRÍTICO en búsqueda BD: {e}")
 
-    # 3. Ensamblaje claro (Separando el contexto de la pregunta con etiquetas)
-    prompt_final = f"INSTRUCCIONES:\n{contexto_base}\n\n{informacion_bd}\n\nPREGUNTA DEL VISITANTE: {request.pregunta}\n\nRESPUESTA DEL GUÍA:"
+    # 2. EL TRUCO MAESTRO: PROMPT DINÁMICO
+    # Le quitamos la confusión a la IA. Python le da una orden directa sin condicionales.
+    
+    if especie_encontrada:
+        mensaje_sistema = (
+            "Eres el guía virtual experto del Museo de Historia Natural de la Universidad del Cauca. "
+            "Tu objetivo es educar de forma precisa, científica y breve (máximo 3 oraciones). "
+            "REGLA DE ORO: Tienes la información exacta de la base de datos a continuación. "
+            "DEBES formular tu respuesta basándote ESTRICTAMENTE en estos datos:\n"
+            f"{informacion_bd}"
+        )
+    else:
+        # Aquí cumplimos tu regla al pie de la letra, forzándola estructuralmente
+        mensaje_sistema = (
+            "Eres el guía virtual experto del Museo de Historia Natural de la Universidad del Cauca. "
+            "Tu objetivo es educar de forma precisa, científica y breve (máximo 3 oraciones). "
+            "REGLA DE ORO: El visitante preguntó por un animal que NO tenemos en el catálogo del museo. "
+            "DEBES iniciar tu respuesta diciendo textualmente: 'No está en nuestra base de datos, pero...' "
+            "y luego debes contestar lo que pide usando tu conocimiento general en biología."
+        )
 
-    # 4. Llamada a Ollama (IA Local)
+    # 3. LLAMADA A OLLAMA (Usando el endpoint correcto para Chat / Roles)
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
-                "http://localhost:11434/api/generate",
+                "http://localhost:11434/api/chat", # <-- CAMBIAMOS /generate POR /chat
                 json={
                     "model": "phi3",
-                    "prompt": prompt_final,
+                    "messages": [
+                        {"role": "system", "content": mensaje_sistema},
+                        {"role": "user", "content": request.pregunta}
+                    ],
                     "stream": False,
                     "options": {
-                        "temperature": 0.1 # <-- CLAVE: Reducimos la creatividad casi a cero para matar al "loro habilidoso"
+                        "temperature": 0.4 # Creatividad moderada, segura por el control estricto de roles
                     }
                 },
                 timeout=60.0
@@ -178,7 +179,7 @@ async def procesar_chat(request: ChatRequest, db: Session = Depends(get_db)):
                 return {"respuesta": "Mi cerebro local está descansando. Intenta de nuevo en un momento."}
             
             data = response.json()
-            return {"respuesta": data["response"]}
+            return {"respuesta": data["message"]["content"]}
 
         except httpx.ConnectError:
             return {"respuesta": "Error: No puedo conectar con Ollama."}
