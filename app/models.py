@@ -3,7 +3,8 @@ from sqlalchemy import Column, Integer, String, Boolean, Text, Date, Numeric, TI
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey, UniqueConstraint, DateTime
+
 
 # Importamos la Base que acabamos de crear en database.py
 from app.database import Base
@@ -71,3 +72,25 @@ class EjemplarMuseo(Base):
 
     # Relación bidireccional con la especie biológica
     especie_info = relationship("Especie", back_populates="ejemplares")
+
+
+
+class EstadisticaTrivia(Base):
+    __tablename__ = "estadisticas_trivia"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tipo_juego = Column(String, index=True) # Nuevo: guardará "trivia" o "adivina"
+    id_pregunta = Column(Integer, index=True)
+    opcion_correcta = Column(Integer)
+    respuesta_usuario = Column(Integer)
+    acierto = Column(Boolean)
+    fecha_registro = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class RegistroVisitante(Base):
+    __tablename__ = "registro_visitantes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    origen = Column(String, index=True) # Guardará "qr" o "directo"
+    fecha_acceso = Column(DateTime(timezone=True), server_default=func.now())
+    

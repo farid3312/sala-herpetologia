@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy import func, Integer
+from app.models import EstadisticaTrivia, EjemplarMuseo
 import jwt
 from datetime import datetime, timedelta, timezone
-
+from typing import Optional
 from app.database import get_db
 from app.models import Especie, UsuarioAdmin
 from app.schemas import EspecieCreate
@@ -16,9 +18,13 @@ from app.services import ejemplar_service # Importamos el nuevo servicio
 from app.schemas import EspecieUpdate # <-- Importante arriba
 from app.schemas import EjemplarUpdate # <-- Importante arriba
 from pathlib import Path
+from sqlalchemy import func
+from app.models import EstadisticaTrivia
 import shutil
 import os
 from fastapi import File, UploadFile
+from app.models import RegistroVisitante
+
 
 router = APIRouter()
 
@@ -65,6 +71,65 @@ def verificar_sesion_admin(request: Request):
 # ==========================================
 # RUTAS DE LOGIN Y SEGURIDAD (HU 7)
 # ==========================================
+
+@router.get("/estadisticas-visitantes", response_class=HTMLResponse)
+async def ver_estadisticas_visitantes(request: Request, db: Session = Depends(get_db)):
+    # Tarea 1 y 2 de la HU 19: Conteo de accesos QR
+    total_qr = db.query(RegistroVisitante).filter(RegistroVisitante.origen == "qr").count()
+    
+    return templates.TemplateResponse("admin_visitantes.html", {
+        "request": request,
+        "total_qr": total_qr
+    })
+
+@router.get("/estadisticas-trivia", response_class=HTMLResponse)
+async def ver_estadisticas_trivia(
+    request: Request, 
+    fecha_inicio: Optional[str] = None, 
+    fecha_fin: Optional[str] = None, 
+    db: Session = Depends(get_db)
+):
+    query = db.query(
+        EstadisticaTrivia.tipo_juego,
+        EstadisticaTrivia.id_pregunta,
+        func.sum(func.cast(EstadisticaTrivia.acierto, Integer)).label('aciertos'),
+        func.count(EstadisticaTrivia.id).label('total')
+    )
+
+    # Lógica de filtrado por fechas
+    if fecha_inicio:
+        inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        query = query.filter(EstadisticaTrivia.fecha_registro >= inicio_dt)
+    if fecha_fin:
+        # Sumamos 1 día para incluir todo el día final seleccionado
+        fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d') + timedelta(days=1)
+        query = query.filter(EstadisticaTrivia.fecha_registro < fin_dt)
+
+    resultados = query.group_by(EstadisticaTrivia.tipo_juego, EstadisticaTrivia.id_pregunta).all()
+
+    datos_trivia = []
+    datos_adivina = []
+
+    for r in resultados:
+        aciertos = r.aciertos if r.aciertos else 0
+        errores = r.total - aciertos
+        item = {
+            "pregunta": f"Item {r.id_pregunta + 1}",
+            "aciertos": aciertos,
+            "errores": errores
+        }
+        if r.tipo_juego == "trivia":
+            datos_trivia.append(item)
+        elif r.tipo_juego == "adivina":
+            datos_adivina.append(item)
+
+    return templates.TemplateResponse("admin_estadisticas.html", {
+        "request": request,
+        "datos_trivia": datos_trivia,
+        "datos_adivina": datos_adivina,
+        "fecha_inicio": fecha_inicio or "",
+        "fecha_fin": fecha_fin or ""
+    })
 
 @router.get("/login", response_class=HTMLResponse, summary="Mostrar pantalla de Login")
 async def mostrar_login(request: Request):

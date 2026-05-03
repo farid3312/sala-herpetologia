@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas de Juegos - Museo Herpetológico</title>
+    
+    <!-- Identidad Visual: Favicon y Bootstrap -->
+    <link rel="icon" href="{{ url_for('static', path='favicon.ico') }}" type="image/x-icon" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            /* Fondo administrativo oficial */
+            background-image: url("{{ url_for('static', path='fondoestadisticas.webp') }}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            min-height: 100vh;
+            margin: 0;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+        }
+
+        /* Botón de retroceder estilo base.html */
+        .btn-back {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background-color: #2c5364;
+            color: white;
+            padding: 10px 18px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: 0.3s;
+            z-index: 1000;
+            border: none;
+        }
+
+        .btn-back:hover {
+            background-color: #1d3a47;
+            color: #00d2ff !important;
+            transform: scale(1.05);
+        }
+
+        .dashboard-container { 
+            max-width: 1100px; 
+            margin: 70px auto 30px; 
+        }
+
+        /* Tarjetas con efecto de cristal (Glassmorphism) */
+        .card { 
+            background: rgba(255, 255, 255, 0.9); 
+            border: none;
+            border-radius: 12px; 
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2); 
+            margin-bottom: 25px; 
+            backdrop-filter: blur(8px);
+        }
+
+        .card-title {
+            color: #2c5364;
+            font-weight: bold;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Botón de retorno -->
+    <a href="/admin/dashboard" class="btn-back">⬅ Volver al Panel</a>
+
+    <div class="dashboard-container">
+        
+        <!-- Sección de Filtros de Fecha (HU 20) -->
+        <div class="card p-4">
+            <h4 class="card-title">🔍 Filtrar por Periodo</h4>
+            <form method="GET" action="/admin/estadisticas-trivia" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Fecha de Inicio:</label>
+                    <input type="date" name="fecha_inicio" class="form-control" value="{{ fecha_inicio }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Fecha de Fin:</label>
+                    <input type="date" name="fecha_fin" class="form-control" value="{{ fecha_fin }}">
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary flex-grow-1 fw-bold">Filtrar</button>
+                    <a href="/admin/estadisticas-trivia" class="btn btn-outline-secondary flex-grow-1">Limpiar</a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Gráficas por tipo de juego -->
+        <div class="row">
+            <!-- Gráfica Juego 1: Trivia -->
+            <div class="col-lg-6">
+                <div class="card p-3">
+                    <h5 class="text-center mb-3">📊 Trivia Múltiple (Aciertos vs Errores)</h5>
+                    <canvas id="triviaChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfica Juego 2: Adivina Quién -->
+            <div class="col-lg-6">
+                <div class="card p-3">
+                    <h5 class="text-center mb-3">🔎 Adivina Quién (Aciertos vs Errores)</h5>
+                    <canvas id="adivinaChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bloques ocultos para transferir datos de Python a JS sin errores de VS Code -->
+    <script type="application/json" id="data-trivia">{{ datos_trivia | tojson | safe }}</script>
+    <script type="application/json" id="data-adivina">{{ datos_adivina | tojson | safe }}</script>
+
+    <script>
+        /**
+         * Función modular para renderizar gráficos
+         */
+        function crearGrafico(canvasId, jsonData, labelAcierto, colorAcierto, colorError) {
+            const container = document.getElementById(jsonData);
+            if (!container) return;
+            
+            const dataRaw = JSON.parse(container.textContent);
+            if (dataRaw.length === 0) {
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                ctx.font = "16px sans-serif";
+                ctx.fillText("No hay datos para este periodo", 50, 100);
+                return;
+            }
+
+            new Chart(document.getElementById(canvasId).getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: dataRaw.map(d => d.pregunta),
+                    datasets: [
+                        {
+                            label: 'Aciertos',
+                            data: dataRaw.map(d => d.aciertos),
+                            backgroundColor: colorAcierto,
+                            borderRadius: 5
+                        },
+                        {
+                            label: 'Errores',
+                            data: dataRaw.map(d => d.errores),
+                            backgroundColor: colorError,
+                            borderRadius: 5
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                    }
+                }
+            });
+        }
+
+        // Ejecutar la creación de los dos gráficos con sus respectivos colores
+        crearGrafico('triviaChart', 'data-trivia', 'Aciertos', 'rgba(44, 83, 100, 0.7)', 'rgba(255, 99, 132, 0.7)');
+        crearGrafico('adivinaChart', 'data-adivina', 'Aciertos', 'rgba(75, 192, 192, 0.7)', 'rgba(255, 159, 64, 0.7)');
+    </script>
+</body>
+</html>

@@ -9,9 +9,36 @@ import httpx
 from app.database import get_db
 from app.models import Especie
 from pydantic import BaseModel
+from app.models import EstadisticaTrivia
 import unicodedata
+from typing import Optional
+from app.models import RegistroVisitante
 
 router = APIRouter()
+
+class ResultadoTrivia(BaseModel):
+    tipoJuego: str  # Nuevo campo
+    idPregunta: int
+    opcionCorrecta: int
+    respuestaUsuario: int
+    acierto: bool
+
+@router.post("/api/trivia")
+async def registrar_respuesta_trivia(resultado: ResultadoTrivia, db: Session = Depends(get_db)):
+    try:
+        nueva_estadistica = EstadisticaTrivia(
+            tipo_juego=resultado.tipoJuego, # Nuevo campo
+            id_pregunta=resultado.idPregunta,
+            opcion_correcta=resultado.opcionCorrecta,
+            respuesta_usuario=resultado.respuestaUsuario,
+            acierto=resultado.acierto
+        )
+        db.add(nueva_estadistica)
+        db.commit()
+        return {"status": "success"}
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": str(e)}
 
 class ChatRequest(BaseModel):
     pregunta: str
@@ -33,10 +60,20 @@ templates = Jinja2Templates(directory="templates")
 
 # 1. Menú Principal de Salas
 @router.get("/", response_class=HTMLResponse)
-async def inicio(request: Request):
-    """Muestra el mapa de todas las salas del museo"""
-    return templates.TemplateResponse("salas.html", {"request": request})
+async def inicio(
+    request: Request, 
+    origen: Optional[str] = None, 
+    db: Session = Depends(get_db)
+):
+    """Muestra el mapa de todas las salas del museo y registra accesos por QR"""
+    
+    # Registra la visita silenciosamente si el parámetro de la URL es "qr"
+    if origen == "qr":
+        nuevo_registro = RegistroVisitante(origen="qr")
+        db.add(nuevo_registro)
+        db.commit()
 
+    return templates.TemplateResponse("salas.html", {"request": request})
 # 2. Sala de Herpetología (Galería con datos de PostgreSQL)
 @router.get("/herpetologia", response_class=HTMLResponse)
 async def galeria(request: Request, db: Session = Depends(get_db)):
@@ -109,7 +146,7 @@ async def procesar_chat(request: ChatRequest, db: Session = Depends(get_db)):
         "REGLA 2 (Conocimiento Extra): Si el visitante hace una pregunta sobre biología general, evolución, "
         "o pide detalles científicos que no están en la información proporcionada, PUEDES usar tu conocimiento "
         "científico previo para responder y complementar de forma educativa. "
-        "REGLA 3: Nunca inventes datos numéricos ni geográficos si no estás 100% seguro, " 
+        "REGLA 3: Nunca inventes datos numéricos ni geográficos si no estás 100(%) seguro, " 
     )
     
     informacion_bd = ""
@@ -168,7 +205,7 @@ async def procesar_chat(request: ChatRequest, db: Session = Depends(get_db)):
                     "prompt": prompt_final,
                     "stream": False,
                     "options": {
-                        "temperature": 0.1 # <-- CLAVE: Reducimos la creatividad casi a cero para matar al "loro habilidoso"
+                        "temperature": 1.0 # <-- CLAVE: Reducimos la creatividad casi a cero para matar al "loro habilidoso"
                     }
                 },
                 timeout=60.0
