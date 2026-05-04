@@ -74,12 +74,18 @@ def verificar_sesion_admin(request: Request):
 
 @router.get("/estadisticas-visitantes", response_class=HTMLResponse)
 async def ver_estadisticas_visitantes(request: Request, db: Session = Depends(get_db)):
-    # Tarea 1 y 2 de la HU 19: Conteo de accesos QR
-    total_qr = db.query(RegistroVisitante).filter(RegistroVisitante.origen == "qr").count()
     
+    total_qr = db.query(RegistroVisitante).filter(RegistroVisitante.origen == "qr").count()
+    total_directo = db.query(RegistroVisitante).filter(RegistroVisitante.origen == "directo").count()
+    total_general = total_qr + total_directo
+    # NUEVO: Traer los últimos 10 registros para ver la fecha y hora
+    ultimos_registros = db.query(RegistroVisitante).order_by(RegistroVisitante.fecha_acceso.desc()).limit(10).all()
     return templates.TemplateResponse("admin_visitantes.html", {
         "request": request,
-        "total_qr": total_qr
+        "total_qr": total_qr,
+        "total_directo": total_directo,
+        "total_general": total_general,
+        "ultimos_registros": ultimos_registros
     })
 
 @router.get("/estadisticas-trivia", response_class=HTMLResponse)

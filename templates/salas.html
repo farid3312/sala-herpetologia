@@ -206,12 +206,20 @@
     </div>
 
     <script>
-        function abrirModalCompartir() {
-            var urlActual = window.location.href;
-            var urlQR = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(urlActual);
+       function abrirModalCompartir() {
+            // Obtenemos la URL base, asegurándonos de limpiar cualquier parámetro previo
+            var urlBase = window.location.origin + window.location.pathname; 
+            
+            // Inyectamos nuestro rastreador
+            var urlRastreada = urlBase + "?origen=qr";
+            
+            // Generamos el QR usando la URL con el rastreador
+            var urlQR = "https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" + encodeURIComponent(urlRastreada);
             
             document.getElementById("qrCode").src = urlQR;
-            document.getElementById("linkTexto").value = urlActual;
+            
+            // Mostramos la URL rastreada también en el cuadro de texto para copiar
+            document.getElementById("linkTexto").value = urlRastreada; 
             document.getElementById("modalCompartir").style.display = "block";
         }
 

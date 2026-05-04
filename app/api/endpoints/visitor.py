@@ -60,20 +60,20 @@ templates = Jinja2Templates(directory="templates")
 
 # 1. Menú Principal de Salas
 @router.get("/", response_class=HTMLResponse)
-async def inicio(
-    request: Request, 
-    origen: Optional[str] = None, 
-    db: Session = Depends(get_db)
-):
-    """Muestra el mapa de todas las salas del museo y registra accesos por QR"""
+async def inicio(request: Request, origen: Optional[str] = None, db: Session = Depends(get_db)):
+    """Muestra el mapa de todas las salas del museo y registra todos los accesos"""
     
-    # Registra la visita silenciosamente si el parámetro de la URL es "qr"
-    if origen == "qr":
-        nuevo_registro = RegistroVisitante(origen="qr")
-        db.add(nuevo_registro)
-        db.commit()
+    # 1. Definimos la etiqueta lógicamente
+    tipo_origen = "qr" if origen == "qr" else "directo"
+    
+    # 2. Guardamos SIEMPRE en la base de datos, sin condicionales que lo bloqueen
+    nuevo_registro = RegistroVisitante(origen=tipo_origen)
+    db.add(nuevo_registro)
+    db.commit()
 
+    # 3. Retornamos la vista principal
     return templates.TemplateResponse("salas.html", {"request": request})
+
 # 2. Sala de Herpetología (Galería con datos de PostgreSQL)
 @router.get("/herpetologia", response_class=HTMLResponse)
 async def galeria(request: Request, db: Session = Depends(get_db)):
