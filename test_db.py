@@ -1,26 +1,27 @@
-# test_db.py
-from app.database import SessionLocal, engine, Base
-from sqlalchemy import text
+import pyautogui
+import random
+import time
 
-def test_connection():
-    try:
-        # 1. Intentar conectar
-        with engine.connect() as connection:
-            print("✅ Conexión al motor de base de datos exitosa.")
-            
-        # 2. Intentar crear una sesión y ejecutar un comando simple
-        db = SessionLocal()
-        db.execute(text("SELECT 1"))
-        print("✅ Sesión de base de datos operativa.")
+def ghost_mouse(duration_seconds=5):
+    """Mueve el mouse a posiciones aleatorias por un tiempo limitado."""
+    print("Iniciando simulación. El mouse se moverá solo por 5 segundos...")
+    end_time = time.time() + duration_seconds
+    
+    while time.time() < end_time:
+        # Obtiene el tamaño actual de tu pantalla en Windows
+        screen_width, screen_height = pyautogui.size()
         
-        # 3. Intentar crear las tablas
-        Base.metadata.create_all(bind=engine)
-        print("✅ Tablas sincronizadas (creadas si no existían).")
+        x = random.randint(0, screen_width)
+        y = random.randint(0, screen_height)
         
-        db.close()
-    except Exception as e:
-        print(f"❌ ERROR: No se pudo conectar a la base de datos.")
-        print(f"Detalle: {e}")
+        # Mueve el mouse a la nueva coordenada en 0.2 segundos
+        pyautogui.moveTo(x, y, duration=0.2)
+        
+    print("Simulación terminada. Control devuelto.")
 
+# --- PUNTO DE ENTRADA DEL SCRIPT ---
+# Esto es lo que faltaba: la orden real de ejecución.
 if __name__ == "__main__":
-    test_connection()
+    # Esperamos 2 segundos antes de empezar para que puedas soltar el mouse
+    time.sleep(2) 
+    ghost_mouse(5)
