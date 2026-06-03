@@ -1,9 +1,16 @@
+import os
+from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy import func, Integer
+from app.models import EstadisticaTrivia, EjemplarMuseo
+import jwt
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 from app.database import get_db
-from app.models import Especie, UsuarioAdmin
+from app.models import Especie, UsuarioAdmin,EjemplarMuseo 
 from app.schemas import EspecieCreate
 from app.services import especie_service # Importamos tu nuevo servicio
 from app.schemas import EjemplarBase # Asegúrate de importar esto arriba
@@ -11,9 +18,14 @@ from app.services import ejemplar_service # Importamos el nuevo servicio
 from app.schemas import EspecieUpdate # <-- Importante arriba
 from app.schemas import EjemplarUpdate # <-- Importante arriba
 from pathlib import Path
+from sqlalchemy import func
+from app.models import EstadisticaTrivia
 import shutil
 import os
 from fastapi import File, UploadFile
+from app.models import RegistroVisitante
+from datetime import datetime, time
+from app.models import InteraccionChatbot
 
 router = APIRouter()
 
@@ -21,8 +33,139 @@ router = APIRouter()
 templates = Jinja2Templates(directory="templates")
 
 # ==========================================
+# CONFIGURACIÓN DE SEGURIDAD (JWT)
+# ==========================================
+# Traemos la llave secreta desde el archivo oculto .env
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
+
+# Protección en caso de que a alguien se le olvide crear el archivo .env
+if not SECRET_KEY:
+    raise RuntimeError("CRÍTICO: No se encontró la SECRET_KEY. Por favor, asegúrate de tener el archivo .env en la raíz del proyecto.")
+
+# ==========================================
+# GUARDIA DE SEGURIDAD
+# ==========================================
+def verificar_sesion_admin(request: Request):
+    """Verifica si el administrador tiene un token JWT válido y sin alterar."""
+    token = request.cookies.get("admin_session")
+    
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_303_SEE_OTHER,
+            headers={"Location": "/admin/login"}
+        )
+        
+    try:
+        # Intentamos abrir el candado del token usando nuestra llave secreta
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("sub") # Retorna el correo del administrador
+        
+    except jwt.ExpiredSignatureError:
+        # El token es real, pero ya pasó su hora límite
+        raise HTTPException(status_code=status.HTTP_303_SEE_OTHER, headers={"Location": "/admin/login"})
+    except jwt.InvalidTokenError:
+        # El token es falso, inventado o fue modificado maliciosamente
+        raise HTTPException(status_code=status.HTTP_303_SEE_OTHER, headers={"Location": "/admin/login"})
+
+
+# ==========================================
 # RUTAS DE LOGIN Y SEGURIDAD (HU 7)
 # ==========================================
+
+@router.get("/estadisticas-visitantes", response_class=HTMLResponse)
+async def ver_estadisticas_visitantes(
+    request: Request, 
+    fecha_inicio: Optional[str] = None, 
+    fecha_fin: Optional[str] = None, 
+    db: Session = Depends(get_db)
+):
+    # 1. Definir la consulta base (sin ejecutarla aún)
+    query_base = db.query(RegistroVisitante)
+
+    # 2. Aplicar filtro de fecha de inicio (desde las 00:00:00)
+    if fecha_inicio:
+        try:
+            dt_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+            query_base = query_base.filter(RegistroVisitante.fecha_acceso >= dt_inicio)
+        except ValueError:
+            pass # Ignora si el formato es inválido
+
+    # 3. Aplicar filtro de fecha de fin (hasta las 23:59:59)
+    if fecha_fin:
+        try:
+            dt_fin = datetime.strptime(fecha_fin, "%Y-%m-%d")
+            dt_fin = datetime.combine(dt_fin, time.max) # Combina la fecha con las 23:59:59.999999
+            query_base = query_base.filter(RegistroVisitante.fecha_acceso <= dt_fin)
+        except ValueError:
+            pass
+
+    # 4. Ejecutar los conteos sobre la consulta ya filtrada
+    total_qr = query_base.filter(RegistroVisitante.origen == "qr").count()
+    total_directo = query_base.filter(RegistroVisitante.origen == "directo").count()
+    total_general = query_base.count()
+    
+    # 5. Traer los registros recientes correspondientes a ese intervalo
+    ultimos_registros = query_base.order_by(RegistroVisitante.fecha_acceso.desc()).limit(10).all()
+
+    return templates.TemplateResponse("admin_visitantes.html", {
+        "request": request,
+        "total_qr": total_qr,
+        "total_directo": total_directo,
+        "total_general": total_general,
+        "ultimos_registros": ultimos_registros,
+        "fecha_inicio": fecha_inicio, # Se envía para repoblar el formulario
+        "fecha_fin": fecha_fin
+    })
+
+@router.get("/estadisticas-trivia", response_class=HTMLResponse)
+async def ver_estadisticas_trivia(
+    request: Request, 
+    fecha_inicio: Optional[str] = None, 
+    fecha_fin: Optional[str] = None, 
+    db: Session = Depends(get_db)
+):
+    query = db.query(
+        EstadisticaTrivia.tipo_juego,
+        EstadisticaTrivia.id_pregunta,
+        func.sum(func.cast(EstadisticaTrivia.acierto, Integer)).label('aciertos'),
+        func.count(EstadisticaTrivia.id).label('total')
+    )
+
+    # Lógica de filtrado por fechas
+    if fecha_inicio:
+        inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        query = query.filter(EstadisticaTrivia.fecha_registro >= inicio_dt)
+    if fecha_fin:
+        # Sumamos 1 día para incluir todo el día final seleccionado
+        fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d') + timedelta(days=1)
+        query = query.filter(EstadisticaTrivia.fecha_registro < fin_dt)
+
+    resultados = query.group_by(EstadisticaTrivia.tipo_juego, EstadisticaTrivia.id_pregunta).all()
+
+    datos_trivia = []
+    datos_adivina = []
+
+    for r in resultados:
+        aciertos = r.aciertos if r.aciertos else 0
+        errores = r.total - aciertos
+        item = {
+            "pregunta": f"Item {r.id_pregunta + 1}",
+            "aciertos": aciertos,
+            "errores": errores
+        }
+        if r.tipo_juego == "trivia":
+            datos_trivia.append(item)
+        elif r.tipo_juego == "adivina":
+            datos_adivina.append(item)
+
+    return templates.TemplateResponse("admin_estadisticas.html", {
+        "request": request,
+        "datos_trivia": datos_trivia,
+        "datos_adivina": datos_adivina,
+        "fecha_inicio": fecha_inicio or "",
+        "fecha_fin": fecha_fin or ""
+    })
 
 @router.get("/login", response_class=HTMLResponse, summary="Mostrar pantalla de Login")
 async def mostrar_login(request: Request):
@@ -36,32 +179,62 @@ async def procesar_login(
     password: str = Form(...), 
     db: Session = Depends(get_db)
 ):
-    """Verifica si el correo y la contraseña coinciden con la base de datos"""
-    
+    """Verifica si el correo y la contraseña coinciden con la base de datos y crea la sesión JWT."""
     # 1. Buscamos al usuario en PostgreSQL
     usuario_db = db.query(UsuarioAdmin).filter(UsuarioAdmin.correo == correo).first()
 
     # 2. Validamos si existe y si la clave es correcta
     if not usuario_db or usuario_db.password_hash != password:
-        # Si falla, recargamos la página pasándole la variable "error"
         return templates.TemplateResponse("login.html", {"request": request, "error": "Correo o contraseña incorrectos"})
 
-    # 3. Si todo es correcto, lo redirigimos al panel principal de admin
-    return RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_302_FOUND)
+    # 3. Creamos el "pasaporte" (Payload del JWT)
+    expiracion = datetime.now(timezone.utc) + timedelta(hours=1)
+    datos_token = {
+        "sub": usuario_db.correo, 
+        "exp": expiracion        
+    }
+    
+    # 4. Encriptamos el pasaporte con nuestra llave secreta
+    token_seguro = jwt.encode(datos_token, SECRET_KEY, algorithm=ALGORITHM)
+
+    # 5. Redireccionamos y establecemos la cookie de sesión encriptada
+    response = RedirectResponse(url="/admin/dashboard", status_code=status.HTTP_302_FOUND)
+    
+    # --- CAMBIO CRÍTICO PARA CELULARES Y TÚNELES AQUÍ ---
+    response.set_cookie(
+        key="admin_session", 
+        value=token_seguro, 
+        httponly=True, 
+        max_age=3600,
+        secure=True,         # Indica que viaja por HTTPS (el túnel lo provee)
+        samesite="none"      # Evita que el celular la bloquee por políticas de "Cross-Site"
+    )
+    
+    return response
+
+@router.get("/logout", summary="Cerrar sesión de administrador")
+async def logout():
+    """Destruye la cookie para cerrar la sesión y redirige al login."""
+    response = RedirectResponse(url="/admin/login", status_code=status.HTTP_302_FOUND)
+    response.delete_cookie("admin_session")
+    return response
 
 @router.get("/dashboard", response_class=HTMLResponse, summary="Panel principal de Administrador")
-async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
+async def admin_dashboard(
+    request: Request, 
+    db: Session = Depends(get_db),
+    admin_correo: str = Depends(verificar_sesion_admin) # <-- GUARDIA APLICADO (ahora retorna el correo)
+):
     """
     Carga el panel de administración y obtiene todas las especies 
     directamente de la base de datos para mostrarlas en la tabla.
     """
-    # Consultamos todas las especies de la tabla 'especies'
     especies_db = db.query(Especie).all()
     
-    # Enviamos la lista de especies al template admin.html
     return templates.TemplateResponse("admin.html", {
         "request": request, 
-        "especies": especies_db
+        "especies": especies_db,
+        "correo_admin": admin_correo # Pasamos el correo al HTML para poder mostrarlo
     })
 
 
@@ -70,11 +243,12 @@ async def admin_dashboard(request: Request, db: Session = Depends(get_db)):
 # ==========================================
 
 @router.post("/especies/", summary="Crear especie individualmente", status_code=status.HTTP_201_CREATED)
-async def crear_especie_manual(especie: EspecieCreate, db: Session = Depends(get_db)):
-    """
-    Permite al administrador agregar una especie manual sin usar el CSV.
-    """
-    # Verificar si ya existe para evitar errores
+async def crear_especie_manual(
+    especie: EspecieCreate, 
+    db: Session = Depends(get_db),
+    admin_token: str = Depends(verificar_sesion_admin) # <-- GUARDIA APLICADO
+):
+    """Permite al administrador agregar una especie manual sin usar el CSV."""
     especie_existente = db.query(Especie).filter(
         Especie.genero == especie.genero,
         Especie.especie == especie.especie
@@ -91,38 +265,35 @@ async def crear_especie_manual(especie: EspecieCreate, db: Session = Depends(get
     return nueva_especie
 
 @router.post("/especies/{especie_id}/ejemplares", summary="Añadir ejemplar físico", status_code=status.HTTP_201_CREATED)
-def crear_ejemplar_endpoint(especie_id: int, ejemplar_in: EjemplarBase, db: Session = Depends(get_db)):
-    """
-    Registra un espécimen físico (frasco, taxidermia, etc.) y lo vincula a una especie existente.
-    El ID de la especie se toma de la URL para garantizar la integridad de la relación.
-    """
+def crear_ejemplar_endpoint(
+    especie_id: int, 
+    ejemplar_in: EjemplarBase, 
+    db: Session = Depends(get_db),
+    admin_token: str = Depends(verificar_sesion_admin) # <-- GUARDIA APLICADO
+):
+    """Registra un espécimen físico y lo vincula a una especie existente."""
     try:
-        # Extraemos el diccionario validado por Pydantic
         datos_dict = ejemplar_in.model_dump()
-        
-        # Delegamos al motor lógico
         nuevo_ejemplar = ejemplar_service.crear_ejemplar(db, especie_id, datos_dict)
         
         return {
             "estado": "exito",
             "mensaje": f"El ejemplar con código {nuevo_ejemplar.numero_coleccion} fue vinculado a la especie ID {especie_id}.",
-            "numero_coleccion": nuevo_ejemplar.numero_coleccion  # Corregido: Usamos la llave primaria real
+            "numero_coleccion": nuevo_ejemplar.numero_coleccion
         }
     except ValueError as e:
-        # Error de negocio (ej. especie no existe o código repetido)
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
-        # Error de base de datos
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/especies/{especie_id}", summary="Eliminar especie del catálogo", status_code=status.HTTP_200_OK)
-def borrar_especie_endpoint(especie_id: int, db: Session = Depends(get_db)):
-    """
-    Elimina una especie de forma segura. 
-    Retornará error si la especie tiene ejemplares vinculados.
-    """
+def borrar_especie_endpoint(
+    especie_id: int, 
+    db: Session = Depends(get_db),
+    admin_token: str = Depends(verificar_sesion_admin) # <-- GUARDIA APLICADO
+):
+    """Elimina una especie de forma segura."""
     try:
-        # Delegamos la responsabilidad de validación al servicio
         especie_eliminada = especie_service.eliminar_especie(db, especie_id)
         
         return {
@@ -130,18 +301,18 @@ def borrar_especie_endpoint(especie_id: int, db: Session = Depends(get_db)):
             "mensaje": f"La especie '{especie_eliminada.genero} {especie_eliminada.especie}' fue eliminada permanentemente del sistema."
         }
     except ValueError as e:
-        # Error 400: Violación de regla de negocio (ej. tiene ejemplares o no existe)
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
-        # Error 500: Falla de infraestructura
         raise HTTPException(status_code=500, detail=str(e))
+
 @router.delete("/ejemplares/{numero_coleccion}", summary="Dar de baja un ejemplar", status_code=status.HTTP_200_OK)
-def borrar_ejemplar_endpoint(numero_coleccion: str, db: Session = Depends(get_db)):
-    """
-    Elimina un espécimen físico de la base de datos usando su número de colección.
-    """
+def borrar_ejemplar_endpoint(
+    numero_coleccion: str, 
+    db: Session = Depends(get_db),
+    admin_token: str = Depends(verificar_sesion_admin) # <-- GUARDIA APLICADO
+):
+    """Elimina un espécimen físico de la base de datos usando su número de colección."""
     try:
-        # Nota: no usamos especie_service, usamos ejemplar_service
         ejemplar_eliminado = ejemplar_service.eliminar_ejemplar(db, numero_coleccion)
         
         return {
@@ -149,23 +320,21 @@ def borrar_ejemplar_endpoint(numero_coleccion: str, db: Session = Depends(get_db
             "mensaje": f"El espécimen {ejemplar_eliminado.numero_coleccion} ha sido dado de baja del inventario exitosamente."
         }
     except ValueError as e:
-        # Aquí usamos 404 (Not Found) porque estamos buscando un recurso específico que no existe
         raise HTTPException(status_code=404, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.patch("/especies/{especie_id}", summary="Actualizar datos de una especie", status_code=status.HTTP_200_OK)
-def modificar_especie_endpoint(especie_id: int, especie_in: EspecieUpdate, db: Session = Depends(get_db)):
-    """
-    Modifica los campos de una especie existente.
-    Solo se actualizarán los campos que se envíen en el JSON.
-    """
+def modificar_especie_endpoint(
+    especie_id: int, 
+    especie_in: EspecieUpdate, 
+    db: Session = Depends(get_db),
+    admin_token: str = Depends(verificar_sesion_admin) # <-- GUARDIA APLICADO
+):
+    """Modifica los campos de una especie existente."""
     try:
-        # exclude_unset=True es MAGIA de Pydantic. 
-        # Solo extrae los campos que el usuario realmente mandó en el JSON, ignorando los nulos.
         datos_a_modificar = especie_in.model_dump(exclude_unset=True)
         
-        # Si mandaron un JSON vacío ({}), no hay nada que hacer
         if not datos_a_modificar:
             raise ValueError("No se enviaron datos para actualizar.")
 
@@ -180,22 +349,21 @@ def modificar_especie_endpoint(especie_id: int, especie_in: EspecieUpdate, db: S
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
 
 @router.patch("/ejemplares/{numero_coleccion}", summary="Actualizar datos de un ejemplar", status_code=status.HTTP_200_OK)
-def modificar_ejemplar_endpoint(numero_coleccion: str, ejemplar_in: EjemplarUpdate, db: Session = Depends(get_db)):
-    """
-    Modifica parcialmente los datos de un espécimen físico.
-    Los datos morfométricos (JSON) se fusionan, no se sobrescriben destructivamente.
-    """
+def modificar_ejemplar_endpoint(
+    numero_coleccion: str, 
+    ejemplar_in: EjemplarUpdate, 
+    db: Session = Depends(get_db),
+    admin_token: str = Depends(verificar_sesion_admin) # <-- GUARDIA APLICADO
+):
+    """Modifica parcialmente los datos de un espécimen físico."""
     try:
-        # extraemos solo lo que el usuario envió explícitamente
         datos_a_modificar = ejemplar_in.model_dump(exclude_unset=True)
         
         if not datos_a_modificar:
             raise ValueError("No se enviaron datos para actualizar.")
 
-        # Llamamos a nuestro motor lógico
         ejemplar_actualizado = ejemplar_service.actualizar_ejemplar(db, numero_coleccion, datos_a_modificar)
         
         return {
@@ -209,23 +377,26 @@ def modificar_ejemplar_endpoint(numero_coleccion: str, ejemplar_in: EjemplarUpda
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/especies/{especie_id}", summary="Obtener detalle de especie", status_code=status.HTTP_200_OK)
-def leer_especie_endpoint(especie_id: int, db: Session = Depends(get_db)):
-    """
-    Retorna todos los datos de una especie. Ideal para llenar formularios de edición.
-    """
+def leer_especie_endpoint(
+    especie_id: int, 
+    db: Session = Depends(get_db),
+    admin_token: str = Depends(verificar_sesion_admin) # <-- GUARDIA APLICADO
+):
+    """Retorna todos los datos de una especie. Ideal para llenar formularios de edición."""
     try:
         especie = especie_service.obtener_especie(db, especie_id)
         return especie
     except ValueError as e:
-        # 404 Not Found: El recurso solicitado no existe
         raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.get("/ejemplares/{numero_coleccion}", summary="Obtener detalle de ejemplar", status_code=status.HTTP_200_OK)
-def leer_ejemplar_endpoint(numero_coleccion: str, db: Session = Depends(get_db)):
-    """
-    Retorna los datos físicos de un espécimen JUNTO con la información de su especie.
-    """
+def leer_ejemplar_endpoint(
+    numero_coleccion: str, 
+    db: Session = Depends(get_db),
+    admin_token: str = Depends(verificar_sesion_admin) # <-- GUARDIA APLICADO
+):
+    """Retorna los datos físicos de un espécimen JUNTO con la información de su especie."""
     try:
         resultado = ejemplar_service.obtener_ejemplar_con_especie(db, numero_coleccion)
         return resultado
@@ -233,11 +404,12 @@ def leer_ejemplar_endpoint(numero_coleccion: str, db: Session = Depends(get_db))
         raise HTTPException(status_code=404, detail=str(e))
 
 @router.get("/especies/{especie_id}/ejemplares", summary="Listar ejemplares de una especie")
-def listar_ejemplares_de_especie(especie_id: int, db: Session = Depends(get_db)):
+def listar_ejemplares_de_especie(
+    especie_id: int, 
+    db: Session = Depends(get_db),
+    admin_token: str = Depends(verificar_sesion_admin) # <-- GUARDIA APLICADO
+):
     """Devuelve la lista de todos los frascos físicos asociados a una especie biológica."""
-    # Importar EjemplarMuseo arriba si no lo tienes en este archivo
-    from app.models import EjemplarMuseo 
-    
     ejemplares = db.query(EjemplarMuseo).filter(EjemplarMuseo.especie_id == especie_id).all()
     return ejemplares
 
@@ -273,3 +445,19 @@ async def upload_file(file: UploadFile = File(...)):
             status_code=500, 
             detail=f"Error interno guardando el archivo físico: {str(e)}"
         )
+@router.get("/interacciones-bot", response_class=HTMLResponse, summary="Ver historial del Chatbot")
+async def ver_interacciones_bot(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin_correo: str = Depends(verificar_sesion_admin)
+):
+    """Obtiene el historial de preguntas para analizar el comportamiento de los visitantes (HU 22)"""
+    
+    # Extraemos el historial ordenado de más reciente a más antiguo
+    historial = db.query(InteraccionChatbot).order_by(InteraccionChatbot.fecha_interaccion.desc()).all()
+    
+    return templates.TemplateResponse("interacciones.html", {
+        "request": request,
+        "historial": historial,
+        "correo_admin": admin_correo
+    })
