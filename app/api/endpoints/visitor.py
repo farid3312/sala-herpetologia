@@ -9,9 +9,37 @@ import httpx
 from app.database import get_db
 from app.models import Especie
 from pydantic import BaseModel
+from app.models import EstadisticaTrivia
 import unicodedata
+from typing import Optional
+from app.models import RegistroVisitante
+from app.models import Especie, InteraccionChatbot
 
 router = APIRouter()
+
+class ResultadoTrivia(BaseModel):
+    tipoJuego: str  # Nuevo campo
+    idPregunta: int
+    opcionCorrecta: int
+    respuestaUsuario: int
+    acierto: bool
+
+@router.post("/api/trivia")
+async def registrar_respuesta_trivia(resultado: ResultadoTrivia, db: Session = Depends(get_db)):
+    try:
+        nueva_estadistica = EstadisticaTrivia(
+            tipo_juego=resultado.tipoJuego, # Nuevo campo
+            id_pregunta=resultado.idPregunta,
+            opcion_correcta=resultado.opcionCorrecta,
+            respuesta_usuario=resultado.respuestaUsuario,
+            acierto=resultado.acierto
+        )
+        db.add(nueva_estadistica)
+        db.commit()
+        return {"status": "success"}
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": str(e)}
 
 class ChatRequest(BaseModel):
     pregunta: str
@@ -33,8 +61,18 @@ templates = Jinja2Templates(directory="templates")
 
 # 1. Menú Principal de Salas
 @router.get("/", response_class=HTMLResponse)
-async def inicio(request: Request):
-    """Muestra el mapa de todas las salas del museo"""
+async def inicio(request: Request, origen: Optional[str] = None, db: Session = Depends(get_db)):
+    """Muestra el mapa de todas las salas del museo y registra todos los accesos"""
+    
+    # 1. Definimos la etiqueta lógicamente
+    tipo_origen = "qr" if origen == "qr" else "directo"
+    
+    # 2. Guardamos SIEMPRE en la base de datos, sin condicionales que lo bloqueen
+    nuevo_registro = RegistroVisitante(origen=tipo_origen)
+    db.add(nuevo_registro)
+    db.commit()
+
+    # 3. Retornamos la vista principal
     return templates.TemplateResponse("salas.html", {"request": request})
 
 # 2. Sala de Herpetología (Galería con datos de PostgreSQL)
@@ -179,7 +217,23 @@ async def procesar_chat(request: ChatRequest, db: Session = Depends(get_db)):
                 return {"respuesta": "Mi cerebro local está descansando. Intenta de nuevo en un momento."}
             
             data = response.json()
-            return {"respuesta": data["message"]["content"]}
+            respuesta_generada = data["message"]["content"]
+            # --- NUEVO: IMPLEMENTACIÓN HU 22 (Clean Code: Registro asíncrono idealmente, pero síncrono por simplicidad) ---
+            # Importa InteraccionChatbot en la parte superior de tu archivo
+            try:
+                nueva_interaccion = InteraccionChatbot(
+                    especie_consultada=str(request.especie_id),
+                    pregunta_usuario=request.pregunta,
+                    respuesta_ia=respuesta_generada
+                )
+                db.add(nueva_interaccion)
+                db.commit()
+            except Exception as error_db:
+                print(f"Error no crítico: No se pudo guardar el log del chat. {error_db}")
+                db.rollback() # Evita que el servidor colapse si falla la base de datos
+            # ---------------------------------------------------------------------------------------------------
+
+            return {"respuesta": respuesta_generada}
 
         except httpx.ConnectError:
             return {"respuesta": "Error: No puedo conectar con Ollama."}

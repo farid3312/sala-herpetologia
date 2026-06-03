@@ -4,9 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy import func, Integer
+from app.models import EstadisticaTrivia, EjemplarMuseo
 import jwt
 from datetime import datetime, timedelta, timezone
-
+from typing import Optional
 from app.database import get_db
 from app.models import Especie, UsuarioAdmin,EjemplarMuseo 
 from app.schemas import EspecieCreate
@@ -16,9 +18,14 @@ from app.services import ejemplar_service # Importamos el nuevo servicio
 from app.schemas import EspecieUpdate # <-- Importante arriba
 from app.schemas import EjemplarUpdate # <-- Importante arriba
 from pathlib import Path
+from sqlalchemy import func
+from app.models import EstadisticaTrivia
 import shutil
 import os
 from fastapi import File, UploadFile
+from app.models import RegistroVisitante
+from datetime import datetime, time
+from app.models import InteraccionChatbot
 
 router = APIRouter()
 
@@ -65,6 +72,100 @@ def verificar_sesion_admin(request: Request):
 # ==========================================
 # RUTAS DE LOGIN Y SEGURIDAD (HU 7)
 # ==========================================
+
+@router.get("/estadisticas-visitantes", response_class=HTMLResponse)
+async def ver_estadisticas_visitantes(
+    request: Request, 
+    fecha_inicio: Optional[str] = None, 
+    fecha_fin: Optional[str] = None, 
+    db: Session = Depends(get_db)
+):
+    # 1. Definir la consulta base (sin ejecutarla aún)
+    query_base = db.query(RegistroVisitante)
+
+    # 2. Aplicar filtro de fecha de inicio (desde las 00:00:00)
+    if fecha_inicio:
+        try:
+            dt_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+            query_base = query_base.filter(RegistroVisitante.fecha_acceso >= dt_inicio)
+        except ValueError:
+            pass # Ignora si el formato es inválido
+
+    # 3. Aplicar filtro de fecha de fin (hasta las 23:59:59)
+    if fecha_fin:
+        try:
+            dt_fin = datetime.strptime(fecha_fin, "%Y-%m-%d")
+            dt_fin = datetime.combine(dt_fin, time.max) # Combina la fecha con las 23:59:59.999999
+            query_base = query_base.filter(RegistroVisitante.fecha_acceso <= dt_fin)
+        except ValueError:
+            pass
+
+    # 4. Ejecutar los conteos sobre la consulta ya filtrada
+    total_qr = query_base.filter(RegistroVisitante.origen == "qr").count()
+    total_directo = query_base.filter(RegistroVisitante.origen == "directo").count()
+    total_general = query_base.count()
+    
+    # 5. Traer los registros recientes correspondientes a ese intervalo
+    ultimos_registros = query_base.order_by(RegistroVisitante.fecha_acceso.desc()).limit(10).all()
+
+    return templates.TemplateResponse("admin_visitantes.html", {
+        "request": request,
+        "total_qr": total_qr,
+        "total_directo": total_directo,
+        "total_general": total_general,
+        "ultimos_registros": ultimos_registros,
+        "fecha_inicio": fecha_inicio, # Se envía para repoblar el formulario
+        "fecha_fin": fecha_fin
+    })
+
+@router.get("/estadisticas-trivia", response_class=HTMLResponse)
+async def ver_estadisticas_trivia(
+    request: Request, 
+    fecha_inicio: Optional[str] = None, 
+    fecha_fin: Optional[str] = None, 
+    db: Session = Depends(get_db)
+):
+    query = db.query(
+        EstadisticaTrivia.tipo_juego,
+        EstadisticaTrivia.id_pregunta,
+        func.sum(func.cast(EstadisticaTrivia.acierto, Integer)).label('aciertos'),
+        func.count(EstadisticaTrivia.id).label('total')
+    )
+
+    # Lógica de filtrado por fechas
+    if fecha_inicio:
+        inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+        query = query.filter(EstadisticaTrivia.fecha_registro >= inicio_dt)
+    if fecha_fin:
+        # Sumamos 1 día para incluir todo el día final seleccionado
+        fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d') + timedelta(days=1)
+        query = query.filter(EstadisticaTrivia.fecha_registro < fin_dt)
+
+    resultados = query.group_by(EstadisticaTrivia.tipo_juego, EstadisticaTrivia.id_pregunta).all()
+
+    datos_trivia = []
+    datos_adivina = []
+
+    for r in resultados:
+        aciertos = r.aciertos if r.aciertos else 0
+        errores = r.total - aciertos
+        item = {
+            "pregunta": f"Item {r.id_pregunta + 1}",
+            "aciertos": aciertos,
+            "errores": errores
+        }
+        if r.tipo_juego == "trivia":
+            datos_trivia.append(item)
+        elif r.tipo_juego == "adivina":
+            datos_adivina.append(item)
+
+    return templates.TemplateResponse("admin_estadisticas.html", {
+        "request": request,
+        "datos_trivia": datos_trivia,
+        "datos_adivina": datos_adivina,
+        "fecha_inicio": fecha_inicio or "",
+        "fecha_fin": fecha_fin or ""
+    })
 
 @router.get("/login", response_class=HTMLResponse, summary="Mostrar pantalla de Login")
 async def mostrar_login(request: Request):
@@ -344,3 +445,19 @@ async def upload_file(file: UploadFile = File(...)):
             status_code=500, 
             detail=f"Error interno guardando el archivo físico: {str(e)}"
         )
+@router.get("/interacciones-bot", response_class=HTMLResponse, summary="Ver historial del Chatbot")
+async def ver_interacciones_bot(
+    request: Request,
+    db: Session = Depends(get_db),
+    admin_correo: str = Depends(verificar_sesion_admin)
+):
+    """Obtiene el historial de preguntas para analizar el comportamiento de los visitantes (HU 22)"""
+    
+    # Extraemos el historial ordenado de más reciente a más antiguo
+    historial = db.query(InteraccionChatbot).order_by(InteraccionChatbot.fecha_interaccion.desc()).all()
+    
+    return templates.TemplateResponse("interacciones.html", {
+        "request": request,
+        "historial": historial,
+        "correo_admin": admin_correo
+    })
